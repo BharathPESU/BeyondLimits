@@ -1,0 +1,146 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { GoogleGenAI } from '@google/genai';
+import { z } from 'zod';
+import { getDashboardPayload } from '@/lib/db';
+
+export const dynamic = 'force-dynamic';
+
+const MOTIVATIONAL_COACH_SYSTEM_PROMPT = `You are the Iron-Will Brotherhood Mentor & Discipline Coach for Bharath CD and Bharath R.
+Core Directive:
+1. Every single time the user asks ANY question, shares a thought, or talks to you, answer their question directly AND forcefully connect it back to self-discipline, emotional control, zero masturbation/relapses, and relentless ambition.
+2. Speak in a strong, commanding, stoic brotherly voice suitable for direct text-to-speech playback.
+3. STRICT CHARACTER LIMIT: Your entire response MUST be under 500 characters (including spaces and punctuation). Never exceed 480 characters. No markdown bullet lists or hashtags—write punchy, spoken-word sentences.`;
+
+const ChatRequestSchema = z.object({
+  message: z.string().min(1, 'Please enter or speak a message.').max(1000),
+  history: z
+    .array(
+      z.object({
+        role: z.enum(['user', 'assistant']),
+        content: z.string(),
+      })
+    )
+    .optional()
+    .default([]),
+});
+
+function enforceMax500Chars(text: string): string {
+  const cleaned = text
+    .replace(/[*#_`~]+/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (cleaned.length <= 495) {
+    return cleaned;
+  }
+
+  const sliced = cleaned.slice(0, 490);
+  const lastPeriod = Math.max(
+    sliced.lastIndexOf('.'),
+    sliced.lastIndexOf('!'),
+    sliced.lastIndexOf('?')
+  );
+
+  if (lastPeriod > 220) {
+    return sliced.slice(0, lastPeriod + 1).trim();
+  }
+
+  const lastSpace = sliced.lastIndexOf(' ');
+  return `${sliced.slice(0, lastSpace > 200 ? lastSpace : 485).trim()}...`;
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json().catch(() => ({}));
+    const parsed = ChatRequestSchema.safeParse(body);
+
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: parsed.error.issues[0]?.message || 'Invalid message' },
+        { status: 400 }
+      );
+    }
+
+    const { message, history } = parsed.data;
+    const geminiKey = process.env.GEMINI_API_KEY?.trim();
+
+    if (!geminiKey || geminiKey === 'MY_GEMINI_API_KEY') {
+      const fallbackReply = enforceMax500Chars(
+        `Stay locked in, brother! Regarding "${message.slice(0, 60)}": discipline is forged when you conquer every impulse and put 100% of your energy into building your future. Master your mind today, keep your streak clean, and never settle for weakness.`
+      );
+      return NextResponse.json({
+        reply: fallbackReply,
+        charCount: fallbackReply.length,
+        systemPrompt: MOTIVATIONAL_COACH_SYSTEM_PROMPT,
+      });
+    }
+
+    const dashboard = getDashboardPayload();
+    const cdStats = dashboard.stats.bharath_cd;
+    const brStats = dashboard.stats.bharath_r;
+
+    const recentHistoryText = history
+      .slice(-4)
+      .map((h) => `${h.role === 'user' ? 'User' : 'Coach'}: ${h.content}`)
+      .join('\n');
+
+    const prompt = `Live Accountability Context:
+- Bharath CD Streak: ${cdStats.currentStreak} clean days (${cdStats.weeklyCleanDays} clean this week)
+- Bharath R Streak: ${brStats.currentStreak} clean days (${brStats.weeklyCleanDays} clean this week)
+- Weekly Leader: ${dashboard.weeklyAchievement.leaderName}
+
+${recentHistoryText ? `Recent Conversation:\n${recentHistoryText}\n\n` : ''}User's New Question / Statement: "${message}"
+
+Respond directly to the user's question while motivating them fiercely to stay disciplined, focused, and relentless. Remember: strictly under 480 characters total, plain spoken text only.`;
+
+    const ai = new GoogleGenAI({
+      apiKey: geminiKey,
+      httpOptions: {
+        headers: {
+          'User-Agent': 'aistudio-build',
+        },
+      },
+    });
+
+    let rawReply = '';
+    try {
+      const response = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: prompt,
+        config: {
+          systemInstruction: MOTIVATIONAL_COACH_SYSTEM_PROMPT,
+          temperature: 0.75,
+        },
+      });
+      rawReply = response.text || '';
+    } catch {
+      const response = await ai.models.generateContent({
+        model: 'gemini-3.8-flash',
+        contents: prompt,
+        config: {
+          systemInstruction: MOTIVATIONAL_COACH_SYSTEM_PROMPT,
+          temperature: 0.75,
+        },
+      });
+      rawReply = response.text || '';
+    }
+
+    const finalReply = enforceMax500Chars(
+      rawReply ||
+        'Every question is a step toward mastery. Guard your energy, reject cheap dopamine, and attack your goals with relentless discipline today!'
+    );
+
+    return NextResponse.json(
+      {
+        reply: finalReply,
+        charCount: finalReply.length,
+        systemPrompt: MOTIVATIONAL_COACH_SYSTEM_PROMPT,
+      },
+      { status: 200 }
+    );
+  } catch (error) {
+    const errMsg =
+      error instanceof Error ? error.message : 'Failed to generate AI coach reply';
+    return NextResponse.json({ error: errMsg }, { status: 500 });
+  }
+}

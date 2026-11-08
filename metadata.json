@@ -1,0 +1,6 @@
+{
+  "name": "Bharath CD & Bharath R — Discipline & Attendance Tracker",
+  "description": "Strict daily self-control attendance, relapse reason logging, weekly achievement leaderboard, and monthly progress analytics powered by SQLite.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
