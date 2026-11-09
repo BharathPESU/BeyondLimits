@@ -13,6 +13,8 @@ import {
   VolumeX,
   Info,
   ChevronLeft,
+  ChevronDown,
+  ChevronUp,
   RotateCcw,
   Trophy,
   Flame,
@@ -51,6 +53,8 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
   const [isMusicEnabled, setIsMusicEnabled] = useState<boolean>(true);
   const [workoutSongIndex, setWorkoutSongIndex] = useState<number>(0);
   const [isMusicPlaying, setIsMusicPlaying] = useState<boolean>(false);
+  const [isMusicPillExpanded, setIsMusicPillExpanded] = useState<boolean>(false);
+  const musicPillRef = useRef<HTMLDivElement | null>(null);
 
   const workoutIframeRef = useRef<HTMLIFrameElement | null>(null);
   const keepAliveAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -108,6 +112,20 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
     });
   };
 
+  // Collapse expanded music pill when tapping outside
+  useEffect(() => {
+    if (!isMusicPillExpanded) return;
+    const handlePointerDown = (e: PointerEvent) => {
+      if (musicPillRef.current && !musicPillRef.current.contains(e.target as Node)) {
+        setIsMusicPillExpanded(false);
+      }
+    };
+    document.addEventListener('pointerdown', handlePointerDown);
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+    };
+  }, [isMusicPillExpanded]);
+
   // Toggle audio mute
   const toggleMute = () => {
     const nextMuted = !isMuted;
@@ -129,16 +147,19 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
     setIsPaused(false);
     setShowTipsModal(false);
     setEnlargedImage(null);
+    setIsMusicPillExpanded(false);
     onClose();
   }, [onClose, pauseWorkoutMusic]);
 
   // Start workout from overview
   const startWorkout = useCallback(() => {
+    workoutSound.stopAll();
     setCurrentIndex(0);
     setWorkoutSongIndex(0);
     setTimeLeft(10); // 10s "Ready to go" countdown
     setPhase('ready');
     setIsPaused(false);
+    setIsMusicPillExpanded(false);
     setTotalSecondsElapsed(0);
     hasSpokenReadyRef.current = false;
     hasSpokenHalfwayRef.current = false;
@@ -170,24 +191,28 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
     pauseWorkoutMusic();
 
     if (currentIndex + 1 < WORKOUT_EXERCISES.length) {
-      const upcoming = WORKOUT_EXERCISES[currentIndex + 1];
       setPhase('rest');
       setTimeLeft(30); // 30-second rest
       setIsPaused(false);
-      // Voice speaks completion and upcoming exercise, then music resumes playing continuation
-      workoutSound.speak(
-        `You have completed ${currentExercise.name}. Rest time. Next up is ${upcoming.name}.`,
-        () => {
-          if (isMusicEnabled) {
-            playWorkoutMusic();
-          }
+
+      // Play the custom Morgan ElevenLabs motivational voice for the completed exercise:
+      const voiceUrl = currentExercise.voiceClipUrl || `/voice/exercise_complete_${currentIndex + 1}.mp3`;
+      workoutSound.playAudioClip(voiceUrl, () => {
+        // When motivational voice concludes, resume the workout music for the rest period
+        if (isMusicEnabled) {
+          playWorkoutMusic();
         }
-      );
+      });
     } else {
       setPhase('completed');
       pauseWorkoutMusic();
       workoutSound.playBeep('complete');
-      workoutSound.speak('Congratulations! Workout completed. Great job on keeping your streak alive!');
+
+      // Final exercise voice clip (Exercise 12 / Bear crawl completion)
+      const finalVoiceUrl = currentExercise.voiceClipUrl || `/voice/exercise_complete_12.mp3`;
+      workoutSound.playAudioClip(finalVoiceUrl, () => {
+        workoutSound.speak('Congratulations! Workout completed. Great job on keeping your streak alive!');
+      });
     }
   }, [currentIndex, currentExercise, isMusicEnabled, pauseWorkoutMusic, playWorkoutMusic]);
 
@@ -220,6 +245,7 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
 
   // Skip rest and start next exercise
   const skipRest = useCallback(() => {
+    workoutSound.stopAll();
     if (nextExercise) {
       beginExercise(currentIndex + 1);
     } else {
@@ -235,11 +261,13 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
 
   // Skip to next exercise or finish
   const skipActive = () => {
+    workoutSound.stopAll();
     handleExerciseComplete();
   };
 
   // Go back to previous exercise
   const previousExercise = () => {
+    workoutSound.stopAll();
     if (currentIndex > 0) {
       beginExercise(currentIndex - 1);
     } else {
@@ -769,64 +797,7 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
                   </button>
                 </div>
 
-                {/* Workout Music Strip in Active Phase (YouTube 15 Tracks) */}
-                <div className="w-full max-w-sm mx-auto bg-slate-50 text-slate-900 rounded-2xl p-3 border border-slate-200 flex items-center justify-between gap-3 shadow-sm">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="p-2 rounded-xl bg-teal-50 text-teal-700 border border-teal-200/60 shrink-0">
-                      <Music className="w-4 h-4" />
-                    </div>
-                    <div className="text-left min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-[10px] uppercase font-bold tracking-wider text-teal-700">
-                          {isMusicEnabled ? (isMusicPlaying ? 'Workout Music (YouTube)' : 'Music Paused') : 'Music Off'}
-                        </span>
-                        {isMusicEnabled && isMusicPlaying && (
-                          <div className="flex items-center gap-0.5 h-2.5">
-                            {[40, 80, 60, 100].map((h, i) => (
-                              <span
-                                key={i}
-                                className="w-0.5 bg-teal-600 rounded-full animate-pulse"
-                                style={{ height: `${h}%`, animationDelay: `${i * 120}ms` }}
-                              />
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                      <p className="text-xs font-bold text-slate-800 truncate">
-                        {isMusicEnabled
-                          ? `#${currentWorkoutSong.id}: ${currentWorkoutSong.title} — ${currentWorkoutSong.artist}`
-                          : 'Tap to turn on workout music'}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    {isMusicEnabled && (
-                      <button
-                        type="button"
-                        onClick={nextWorkoutSong}
-                        className="p-1.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 transition-colors cursor-pointer"
-                        title="Next YouTube Track"
-                        aria-label="Next YouTube Track"
-                      >
-                        <SkipForward className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={toggleWorkoutMusic}
-                      className={`px-2.5 py-1 text-[11px] font-bold rounded-xl transition-all cursor-pointer border ${
-                        isMusicEnabled
-                          ? 'bg-teal-700 hover:bg-teal-800 text-white border-teal-700 shadow-sm'
-                          : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200'
-                      }`}
-                    >
-                      {isMusicEnabled ? 'ON' : 'OFF'}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between text-xs text-slate-500 pt-2 border-t border-slate-100">
+                <div className="flex items-center justify-between text-xs text-slate-500 pt-3 border-t border-slate-100">
                   <span>Exercise {currentIndex + 1} of 12</span>
                   <span>{isPaused ? 'Paused' : 'Timer Active'}</span>
                 </div>
@@ -930,64 +901,7 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
                   </button>
                 </div>
 
-                {/* Workout Music Strip in Rest Phase (YouTube 15 Tracks) */}
-                <div className="w-full bg-slate-50 text-slate-900 rounded-2xl p-3 border border-slate-200 flex items-center justify-between gap-3 shadow-sm">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="p-2 rounded-xl bg-teal-50 text-teal-700 border border-teal-200/60 shrink-0">
-                      <Music className="w-4 h-4" />
-                    </div>
-                    <div className="text-left min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-[10px] uppercase font-bold tracking-wider text-teal-700">
-                          {isMusicEnabled ? (isMusicPlaying ? 'Workout Music (YouTube)' : 'Music Paused') : 'Music Off'}
-                        </span>
-                        {isMusicEnabled && isMusicPlaying && (
-                          <div className="flex items-center gap-0.5 h-2.5">
-                            {[40, 80, 60, 100].map((h, i) => (
-                              <span
-                                key={i}
-                                className="w-0.5 bg-teal-600 rounded-full animate-pulse"
-                                style={{ height: `${h}%`, animationDelay: `${i * 120}ms` }}
-                              />
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                      <p className="text-xs font-bold text-slate-800 truncate">
-                        {isMusicEnabled
-                          ? `#${currentWorkoutSong.id}: ${currentWorkoutSong.title} — ${currentWorkoutSong.artist}`
-                          : 'Tap to turn on workout music'}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    {isMusicEnabled && (
-                      <button
-                        type="button"
-                        onClick={nextWorkoutSong}
-                        className="p-1.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 transition-colors cursor-pointer"
-                        title="Next YouTube Track"
-                        aria-label="Next YouTube Track"
-                      >
-                        <SkipForward className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={toggleWorkoutMusic}
-                      className={`px-2.5 py-1 text-[11px] font-bold rounded-xl transition-all cursor-pointer border ${
-                        isMusicEnabled
-                          ? 'bg-teal-700 hover:bg-teal-800 text-white border-teal-700 shadow-sm'
-                          : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200'
-                      }`}
-                    >
-                      {isMusicEnabled ? 'ON' : 'OFF'}
-                    </button>
-                  </div>
-                </div>
-
-                <p className="text-[11px] text-slate-400">
+                <p className="text-xs text-slate-500 pt-2 border-t border-slate-100">
                   Catch your breath and get ready for {nextExercise?.name || 'the next exercise'}
                 </p>
               </div>
@@ -1146,60 +1060,163 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
       )}
 
       {/* ========================================================================= */}
-      {/* SINGLE PERSISTENT WORKOUT YOUTUBE MUSIC PLAYER                           */}
-      {/* Stays mounted continuously during Active <-> Rest so music NEVER restarts */}
+      {/* BACKGROUND PERSISTENT YOUTUBE AUDIO PLAYER (NO VISIBLE VIDEO)            */}
+      {/* Stays mounted continuously during Active <-> Rest so audio NEVER resets   */}
       {/* ========================================================================= */}
-      {isOpen && (phase === 'active' || phase === 'rest') && (
+      {isOpen && (
         <div
-          className={`fixed bottom-4 right-4 z-50 w-72 sm:w-80 rounded-2xl overflow-hidden border border-slate-200 bg-white shadow-2xl transition-all duration-300 ${
-            isMusicEnabled ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 translate-y-6 pointer-events-none'
-          }`}
+          className="fixed -top-[9999px] -left-[9999px] w-1 h-1 opacity-0 pointer-events-none overflow-hidden"
+          aria-hidden="true"
         >
-          {/* Mini Player Control Bar */}
-          <div className="bg-slate-50 border-b border-slate-100 px-3 py-2 flex items-center justify-between">
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="p-1 rounded-md bg-teal-50 text-teal-700 shrink-0">
-                <Music className="w-3.5 h-3.5" />
-              </div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] font-bold text-teal-700 uppercase tracking-wider">
-                    {isMusicPlaying ? 'Workout Music' : 'Music Paused'}
-                  </span>
-                  {isMusicPlaying && (
-                    <span className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-ping" />
-                  )}
-                </div>
-                <p className="text-xs font-bold text-slate-800 truncate">
-                  {currentWorkoutSong.title}
-                </p>
-              </div>
-            </div>
+          <iframe
+            ref={workoutIframeRef}
+            id="workout-persistent-youtube-iframe"
+            key={`workout-yt-track-${currentWorkoutSong.id}-${workoutVideoId}`}
+            src={`https://www.youtube-nocookie.com/embed/${workoutVideoId}?enablejsapi=1&autoplay=1&rel=0&modestbranding=1&playsinline=1`}
+            title={`${currentWorkoutSong.title} - ${currentWorkoutSong.artist}`}
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            tabIndex={-1}
+            className="w-1 h-1 border-0"
+          />
+        </div>
+      )}
 
+      {/* ========================================================================= */}
+      {/* TOP-CENTER EXPANDABLE WORKOUT MUSIC OVAL / PILL                           */}
+      {/* Initial state: sleek small oval. Click to expand for Play, Pause, Next    */}
+      {/* ========================================================================= */}
+      {isOpen && (phase === 'active' || phase === 'rest' || phase === 'ready') && (
+        <div className="fixed top-3.5 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center">
+          {!isMusicPillExpanded ? (
+            /* Hiding mode: Small sleek oval */
             <button
               type="button"
-              onClick={nextWorkoutSong}
-              className="p-1.5 rounded-lg bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 transition-colors cursor-pointer text-xs font-bold flex items-center gap-1 shrink-0"
-              title="Next Track"
-              aria-label="Next Track"
+              onClick={() => setIsMusicPillExpanded(true)}
+              className="group flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/95 hover:bg-white backdrop-blur-md border border-slate-200/90 shadow-md hover:shadow-lg transition-all duration-200 cursor-pointer text-slate-800 active:scale-95"
+              title="Click to control workout music"
+              aria-label="Expand workout music player"
             >
-              <SkipForward className="w-3.5 h-3.5" />
-            </button>
-          </div>
+              <div className="w-5 h-5 rounded-full bg-teal-50 text-teal-700 flex items-center justify-center shrink-0">
+                {isMusicEnabled && isMusicPlaying ? (
+                  <div className="flex items-center gap-0.5 h-2.5">
+                    {[40, 90, 60].map((h, i) => (
+                      <span
+                        key={i}
+                        className="w-0.5 bg-teal-600 rounded-full animate-pulse"
+                        style={{ height: `${h}%`, animationDelay: `${i * 150}ms` }}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <Music className="w-3 h-3 text-slate-400" />
+                )}
+              </div>
 
-          {/* Embedded YouTube Player */}
-          <div className="w-full aspect-video bg-slate-950">
-            <iframe
-              ref={workoutIframeRef}
-              id="workout-persistent-youtube-iframe"
-              key={`workout-yt-track-${currentWorkoutSong.id}-${workoutVideoId}`}
-              src={`https://www.youtube-nocookie.com/embed/${workoutVideoId}?enablejsapi=1&autoplay=1&rel=0&modestbranding=1&playsinline=1`}
-              title={`${currentWorkoutSong.title} - ${currentWorkoutSong.artist}`}
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-              className="w-full h-full border-0"
-            />
-          </div>
+              <span className="text-xs font-semibold text-slate-700 max-w-[130px] sm:max-w-[200px] truncate">
+                {isMusicEnabled ? currentWorkoutSong.title : 'Music Off'}
+              </span>
+
+              {isMusicEnabled && isMusicPlaying ? (
+                <span className="w-2 h-2 rounded-full bg-teal-500 animate-ping shrink-0" />
+              ) : (
+                <span className="w-2 h-2 rounded-full bg-slate-300 shrink-0" />
+              )}
+
+              <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-600 transition-colors shrink-0" />
+            </button>
+          ) : (
+            /* Expanded mode: Floating Music Mini Controller */
+            <div
+              ref={musicPillRef}
+              className="w-80 max-w-[92vw] bg-white rounded-2xl border border-slate-200 shadow-2xl p-3.5 transition-all animate-in fade-in zoom-in-95 duration-200"
+            >
+              <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="p-1.5 rounded-lg bg-teal-50 text-teal-700 shrink-0">
+                    <Music className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-teal-700">
+                      {isMusicEnabled ? (isMusicPlaying ? 'Workout Music' : 'Music Paused') : 'Music Muted'}
+                    </span>
+                    <p className="text-xs font-bold text-slate-800 truncate">
+                      #{currentWorkoutSong.id}: {currentWorkoutSong.title}
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setIsMusicPillExpanded(false)}
+                  className="p-1 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+                  title="Collapse to oval"
+                  aria-label="Collapse music controls"
+                >
+                  <ChevronUp className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="py-2 flex items-center justify-between text-[11px] text-slate-500">
+                <span className="truncate">{currentWorkoutSong.artist}</span>
+                <span className="shrink-0 font-medium text-slate-400">
+                  {workoutSongIndex + 1} / {MOTIVATIONAL_SONGS.length}
+                </span>
+              </div>
+
+              {/* Music controls: Play/Pause, Next Track, Music On/Off */}
+              <div className="flex items-center justify-between pt-1 gap-2">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (isMusicPlaying) {
+                        pauseWorkoutMusic();
+                      } else {
+                        playWorkoutMusic();
+                      }
+                    }}
+                    className="px-3.5 py-1.5 rounded-xl bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer active:scale-95"
+                    title={isMusicPlaying ? 'Pause Music' : 'Play Music'}
+                  >
+                    {isMusicPlaying ? (
+                      <>
+                        <Pause className="w-3.5 h-3.5 fill-current" />
+                        <span>Pause</span>
+                      </>
+                    ) : (
+                      <>
+                        <Play className="w-3.5 h-3.5 fill-current" />
+                        <span>Play</span>
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={nextWorkoutSong}
+                    className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer active:scale-95"
+                    title="Next Motivational Song"
+                  >
+                    <SkipForward className="w-3.5 h-3.5" />
+                    <span>Next</span>
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={toggleWorkoutMusic}
+                  className={`px-2.5 py-1 text-[11px] font-bold rounded-lg border transition-colors cursor-pointer ${
+                    isMusicEnabled
+                      ? 'bg-teal-50 border-teal-200 text-teal-700'
+                      : 'bg-slate-100 border-slate-200 text-slate-500'
+                  }`}
+                  title={isMusicEnabled ? 'Turn Off Music' : 'Turn On Music'}
+                >
+                  {isMusicEnabled ? 'MUSIC ON' : 'MUSIC OFF'}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

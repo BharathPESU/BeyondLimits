@@ -43,3 +43,17 @@
 - When signed in, the top-right header must display **ONLY the user's avatar image** via Clerk's `<UserButton>`.
 - Do not add separate standalone profile or settings buttons in the header bar.
 - Use `<UserButton.MenuItems>` with `<UserButton.Action>` for **"My Profile"** and **"AI & Gemini Settings"** so all user actions are centralized in the avatar menu.
+
+
+---
+
+## 5. Workout Audio-Only Mode & Top-Center Expandable Music Controller
+- **No Video in Workout Section**: The YouTube player in `WorkoutModal.tsx` operates in audio-only mode. The iframe is mounted off-screen (`fixed -top-[9999px] -left-[9999px] opacity-0 pointer-events-none`) so audio streams seamlessly in the background without displaying video frames. Video playback remains available in the Motivation section (`SongsModal.tsx`).
+- **Top-Center Floating Expandable Pill / Oval**:
+  - In default/hiding state, a compact oval pill is centered at the top of the workout screen (`fixed top-3.5 left-1/2 -translate-x-1/2 z-50`) displaying playing status, audio waveform, and track title.
+  - Clicking the oval expands into a clean, floating controller with Play/Pause, Next Track, Music On/Off, and collapse buttons.
+  - Tapping outside automatically collapses the controller back to the small oval.
+- **Custom Timestamp-Ordered Voice Motivation Cues**:
+  - The 12 workout exercises (1 to 12) use timestamp-ordered ElevenLabs custom voice audio files (`public/voice/exercise_complete_{1-12}.mp3`).
+  - Upon exercise completion, background music pauses and the custom voice file plays.
+  - When the motivational voice finishes, background music automatically resumes continuation for the rest interval.

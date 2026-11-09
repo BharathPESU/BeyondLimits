@@ -7,7 +7,23 @@ export interface WorkoutExercise {
   focus: string;
   description: string;
   tips: string[];
+  voiceClipUrl: string;
 }
+
+export const WORKOUT_VOICE_CLIPS: string[] = [
+  '/voice/exercise_complete_1.mp3',
+  '/voice/exercise_complete_2.mp3',
+  '/voice/exercise_complete_3.mp3',
+  '/voice/exercise_complete_4.mp3',
+  '/voice/exercise_complete_5.mp3',
+  '/voice/exercise_complete_6.mp3',
+  '/voice/exercise_complete_7.mp3',
+  '/voice/exercise_complete_8.mp3',
+  '/voice/exercise_complete_9.mp3',
+  '/voice/exercise_complete_10.mp3',
+  '/voice/exercise_complete_11.mp3',
+  '/voice/exercise_complete_12.mp3',
+];
 
 export const WORKOUT_EXERCISES: WorkoutExercise[] = [
   {
@@ -23,6 +39,7 @@ export const WORKOUT_EXERCISES: WorkoutExercise[] = [
       'Keep your core engaged throughout',
       'Maintain a steady, rhythmic breathing pattern',
     ],
+    voiceClipUrl: '/voice/exercise_complete_1.mp3',
   },
   {
     id: 'squats',
@@ -37,6 +54,7 @@ export const WORKOUT_EXERCISES: WorkoutExercise[] = [
       'Drive weight up through your heels',
       'Lower until thighs are parallel to floor',
     ],
+    voiceClipUrl: '/voice/exercise_complete_2.mp3',
   },
   {
     id: 'pushups',
@@ -51,6 +69,7 @@ export const WORKOUT_EXERCISES: WorkoutExercise[] = [
       'Keep elbows at a 45-degree angle from torso',
       'Do knee pushups if modifying for endurance',
     ],
+    voiceClipUrl: '/voice/exercise_complete_3.mp3',
   },
   {
     id: 'lunges',
@@ -65,6 +84,7 @@ export const WORKOUT_EXERCISES: WorkoutExercise[] = [
       'Keep your torso upright and shoulders relaxed',
       'Alternate legs smoothly with each repetition',
     ],
+    voiceClipUrl: '/voice/exercise_complete_4.mp3',
   },
   {
     id: 'plank',
@@ -79,6 +99,7 @@ export const WORKOUT_EXERCISES: WorkoutExercise[] = [
       'Tighten your glutes and draw navel toward spine',
       'Breathe smoothly and consistently',
     ],
+    voiceClipUrl: '/voice/exercise_complete_5.mp3',
   },
   {
     id: 'mountain_climbers',
@@ -93,6 +114,7 @@ export const WORKOUT_EXERCISES: WorkoutExercise[] = [
       'Keep hips level and avoid bouncing excessively',
       'Maintain a brisk, steady pace',
     ],
+    voiceClipUrl: '/voice/exercise_complete_6.mp3',
   },
   {
     id: 'burpees',
@@ -107,6 +129,7 @@ export const WORKOUT_EXERCISES: WorkoutExercise[] = [
       'Land softly when jumping up',
       'Keep core braced when kicking back to plank',
     ],
+    voiceClipUrl: '/voice/exercise_complete_7.mp3',
   },
   {
     id: 'high_knees',
@@ -121,6 +144,7 @@ export const WORKOUT_EXERCISES: WorkoutExercise[] = [
       'Stay light on your feet',
       'Keep your chest proud and avoid leaning back',
     ],
+    voiceClipUrl: '/voice/exercise_complete_8.mp3',
   },
   {
     id: 'glute_bridge',
@@ -135,6 +159,7 @@ export const WORKOUT_EXERCISES: WorkoutExercise[] = [
       'Do not hyperextend your lower back',
       'Drive through your heels',
     ],
+    voiceClipUrl: '/voice/exercise_complete_9.mp3',
   },
   {
     id: 'bicycle_crunches',
@@ -149,6 +174,7 @@ export const WORKOUT_EXERCISES: WorkoutExercise[] = [
       'Do not pull on your neck with your hands',
       'Fully extend the trailing leg',
     ],
+    voiceClipUrl: '/voice/exercise_complete_10.mp3',
   },
   {
     id: 'superman',
@@ -163,6 +189,7 @@ export const WORKOUT_EXERCISES: WorkoutExercise[] = [
       'Squeeze glutes and lower back at the top for 1-2 seconds',
       'Control the descent smoothly',
     ],
+    voiceClipUrl: '/voice/exercise_complete_11.mp3',
   },
   {
     id: 'bear_crawl',
@@ -177,6 +204,6 @@ export const WORKOUT_EXERCISES: WorkoutExercise[] = [
       'Maintain a flat back like a tabletop',
       'Move opposite hand and foot simultaneously',
     ],
+    voiceClipUrl: '/voice/exercise_complete_12.mp3',
   },
 ];
-

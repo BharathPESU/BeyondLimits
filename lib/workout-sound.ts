@@ -4,11 +4,19 @@ class WorkoutSoundManager {
   private audioCtx: AudioContext | null = null;
   private isMuted: boolean = false;
   private speechSafetyTimer: NodeJS.Timeout | null = null;
+  private currentAudio: HTMLAudioElement | null = null;
+  private audioSafetyTimer: NodeJS.Timeout | null = null;
 
   public setMuted(muted: boolean) {
     this.isMuted = muted;
-    if (muted && typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
+    if (muted) {
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+      if (this.currentAudio) {
+        this.currentAudio.pause();
+        this.currentAudio = null;
+      }
     }
   }
 
@@ -145,13 +153,74 @@ class WorkoutSoundManager {
     }
   }
 
+  public playAudioClip(src: string, onComplete?: () => void) {
+    if (this.isMuted || typeof window === 'undefined') {
+      onComplete?.();
+      return;
+    }
+
+    try {
+      this.stopAll();
+
+      const audio = new Audio(src);
+      this.currentAudio = audio;
+      audio.volume = 1.0;
+
+      let finished = false;
+      const finishAudio = () => {
+        if (finished) return;
+        finished = true;
+        if (this.audioSafetyTimer) {
+          clearTimeout(this.audioSafetyTimer);
+          this.audioSafetyTimer = null;
+        }
+        if (this.currentAudio === audio) {
+          this.currentAudio = null;
+        }
+        onComplete?.();
+      };
+
+      audio.onended = finishAudio;
+      audio.onerror = () => {
+        console.warn('Audio clip failed to play, continuing:', src);
+        finishAudio();
+      };
+
+      // Safety timeout: voice clips are 3-5 seconds, so 10s maximum prevents any hang
+      this.audioSafetyTimer = setTimeout(finishAudio, 10000);
+
+      const playPromise = audio.play();
+      if (playPromise !== undefined) {
+        playPromise.catch((err) => {
+          console.warn('Audio play was interrupted or blocked:', err);
+          finishAudio();
+        });
+      }
+    } catch {
+      onComplete?.();
+    }
+  }
+
   public stopAll() {
     if (this.speechSafetyTimer) {
       clearTimeout(this.speechSafetyTimer);
       this.speechSafetyTimer = null;
     }
+    if (this.audioSafetyTimer) {
+      clearTimeout(this.audioSafetyTimer);
+      this.audioSafetyTimer = null;
+    }
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel();
+    }
+    if (this.currentAudio) {
+      try {
+        this.currentAudio.pause();
+        this.currentAudio.currentTime = 0;
+      } catch {
+        // Ignore pause errors
+      }
+      this.currentAudio = null;
     }
   }
 }
