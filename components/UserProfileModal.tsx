@@ -102,8 +102,8 @@ export default function UserProfileModal({
       localStorage.setItem('beyondlimits_user_profile', JSON.stringify(profileData));
     } catch {}
 
+    // Save to Clerk user metadata
     try {
-      // 1. Update Clerk client user if signed in
       if (user) {
         const nameParts = profileData.name.split(' ');
         const firstName = nameParts[0] || '';
@@ -114,12 +114,16 @@ export default function UserProfileModal({
           lastName: lastName || undefined,
           unsafeMetadata: {
             ...user.unsafeMetadata,
-            ...profileData,
+            age: profileData.age,
+            dateOfBirth: profileData.dateOfBirth,
+            bloodGroup: profileData.bloodGroup,
+            height: profileData.height,
+            place: profileData.place,
           },
         });
       }
 
-      // 2. Sync to server profile API
+      // Sync to backend API (/api/profile)
       const res = await fetch('/api/profile', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -157,18 +161,18 @@ export default function UserProfileModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm overflow-y-auto"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto"
       role="dialog"
       aria-modal="true"
     >
       <div
-        className="w-full max-w-lg bg-slate-900 border border-cyan-900/40 rounded-3xl p-6 sm:p-7 shadow-2xl space-y-6 my-8 text-white"
+        className="w-full max-w-lg bg-white border border-slate-200 rounded-3xl p-6 sm:p-7 shadow-2xl space-y-6 my-8 text-slate-900"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
-        <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-4">
           <div className="flex items-center gap-3">
-            <div className="relative w-12 h-12 rounded-2xl overflow-hidden ring-2 ring-cyan-500/40 bg-slate-800 flex items-center justify-center shrink-0">
+            <div className="relative w-12 h-12 rounded-2xl overflow-hidden ring-2 ring-teal-600/30 bg-teal-50 flex items-center justify-center shrink-0">
               {user?.imageUrl ? (
                 <Image
                   src={user.imageUrl}
@@ -178,19 +182,19 @@ export default function UserProfileModal({
                   className="object-cover"
                 />
               ) : (
-                <User className="w-6 h-6 text-cyan-400" />
+                <User className="w-6 h-6 text-teal-700" />
               )}
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-lg font-bold text-white tracking-wide">
+                <h3 className="text-lg font-bold text-slate-900 tracking-tight">
                   My Profile
                 </h3>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-950 text-cyan-400 border border-cyan-800/40">
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-50 text-teal-700 border border-teal-200/60">
                   Athlete
                 </span>
               </div>
-              <p className="text-xs text-slate-400 truncate max-w-[240px]">
+              <p className="text-xs text-slate-500 truncate max-w-[240px]">
                 {userEmail || 'Discipline Athlete'}
               </p>
             </div>
@@ -199,7 +203,8 @@ export default function UserProfileModal({
           <button
             type="button"
             onClick={onClose}
-            className="min-h-[42px] min-w-[42px] flex items-center justify-center rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+            className="min-h-[42px] min-w-[42px] flex items-center justify-center rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+            aria-label="Close Profile"
           >
             <X className="w-5 h-5" />
           </button>
@@ -210,14 +215,14 @@ export default function UserProfileModal({
           <div
             className={`p-3.5 rounded-2xl flex items-center gap-2.5 text-xs font-semibold ${
               statusMessage.type === 'success'
-                ? 'bg-teal-950/80 text-teal-300 border border-teal-800/50'
-                : 'bg-red-950/80 text-red-300 border border-red-800/50'
+                ? 'bg-teal-50 text-teal-800 border border-teal-200'
+                : 'bg-rose-50 text-rose-800 border border-rose-200'
             }`}
           >
             {statusMessage.type === 'success' ? (
-              <CheckCircle2 className="w-4 h-4 text-teal-400 shrink-0" />
+              <CheckCircle2 className="w-4 h-4 text-teal-600 shrink-0" />
             ) : (
-              <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
+              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
             )}
             <span>{statusMessage.text}</span>
           </div>
@@ -227,8 +232,8 @@ export default function UserProfileModal({
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Full Name */}
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
-              <User className="w-3.5 h-3.5 text-cyan-400" />
+            <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+              <User className="w-3.5 h-3.5 text-teal-700" />
               <span>Full Name</span>
             </label>
             <input
@@ -237,15 +242,15 @@ export default function UserProfileModal({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Bharath CD"
-              className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 focus:border-cyan-500 rounded-xl text-sm text-white placeholder-slate-600 outline-none transition-colors"
+              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 focus:border-teal-600 focus:bg-white rounded-xl text-sm text-slate-900 placeholder-slate-400 outline-none transition-all"
             />
           </div>
 
           {/* Age & Date of Birth (2 Cols) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5 text-cyan-400" />
+              <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5 text-teal-700" />
                 <span>Age</span>
               </label>
               <input
@@ -255,20 +260,20 @@ export default function UserProfileModal({
                 value={age}
                 onChange={(e) => setAge(e.target.value)}
                 placeholder="e.g. 21"
-                className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 focus:border-cyan-500 rounded-xl text-sm text-white placeholder-slate-600 outline-none transition-colors"
+                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 focus:border-teal-600 focus:bg-white rounded-xl text-sm text-slate-900 placeholder-slate-400 outline-none transition-all"
               />
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5 text-cyan-400" />
+              <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5 text-teal-700" />
                 <span>Date of Birth</span>
               </label>
               <input
                 type="date"
                 value={dateOfBirth}
                 onChange={(e) => setDateOfBirth(e.target.value)}
-                className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 focus:border-cyan-500 rounded-xl text-sm text-white placeholder-slate-600 outline-none transition-colors"
+                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 focus:border-teal-600 focus:bg-white rounded-xl text-sm text-slate-900 placeholder-slate-400 outline-none transition-all"
               />
             </div>
           </div>
@@ -276,14 +281,14 @@ export default function UserProfileModal({
           {/* Blood Group & Height (2 Cols) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
-                <Heart className="w-3.5 h-3.5 text-cyan-400" />
+              <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                <Heart className="w-3.5 h-3.5 text-teal-700" />
                 <span>Blood Group</span>
               </label>
               <select
                 value={bloodGroup}
                 onChange={(e) => setBloodGroup(e.target.value)}
-                className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 focus:border-cyan-500 rounded-xl text-sm text-white outline-none transition-colors cursor-pointer"
+                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 focus:border-teal-600 focus:bg-white rounded-xl text-sm text-slate-900 outline-none transition-all cursor-pointer"
               >
                 <option value="">Select blood group</option>
                 {BLOOD_GROUPS.map((bg) => (
@@ -295,8 +300,8 @@ export default function UserProfileModal({
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
-                <Ruler className="w-3.5 h-3.5 text-cyan-400" />
+              <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                <Ruler className="w-3.5 h-3.5 text-teal-700" />
                 <span>Height</span>
               </label>
               <input
@@ -304,15 +309,15 @@ export default function UserProfileModal({
                 value={height}
                 onChange={(e) => setHeight(e.target.value)}
                 placeholder="e.g. 178 cm / 5'10&quot;"
-                className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 focus:border-cyan-500 rounded-xl text-sm text-white placeholder-slate-600 outline-none transition-colors"
+                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 focus:border-teal-600 focus:bg-white rounded-xl text-sm text-slate-900 placeholder-slate-400 outline-none transition-all"
               />
             </div>
           </div>
 
           {/* Place / City */}
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
-              <MapPin className="w-3.5 h-3.5 text-cyan-400" />
+            <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+              <MapPin className="w-3.5 h-3.5 text-teal-700" />
               <span>Place / City</span>
             </label>
             <input
@@ -320,21 +325,21 @@ export default function UserProfileModal({
               value={place}
               onChange={(e) => setPlace(e.target.value)}
               placeholder="e.g. Bengaluru, Karnataka"
-              className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 focus:border-cyan-500 rounded-xl text-sm text-white placeholder-slate-600 outline-none transition-colors"
+              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 focus:border-teal-600 focus:bg-white rounded-xl text-sm text-slate-900 placeholder-slate-400 outline-none transition-all"
             />
           </div>
 
-          {/* Email (Read only) */}
+          {/* Connected Email (Read only) */}
           <div className="space-y-1.5 pt-1">
-            <label className="text-xs font-bold text-slate-400 flex items-center gap-1.5">
-              <Mail className="w-3.5 h-3.5 text-slate-500" />
-              <span>Connected Gmail / Email</span>
+            <label className="text-xs font-bold text-slate-500 flex items-center gap-1.5">
+              <Mail className="w-3.5 h-3.5 text-slate-400" />
+              <span>Connected Google / Email</span>
             </label>
             <input
               type="email"
               disabled
               value={userEmail}
-              className="w-full px-4 py-2.5 bg-slate-950/60 border border-slate-800/60 rounded-xl text-sm text-slate-400 cursor-not-allowed"
+              className="w-full px-4 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-sm text-slate-500 cursor-not-allowed"
             />
           </div>
 
@@ -343,7 +348,7 @@ export default function UserProfileModal({
             <button
               type="submit"
               disabled={isSaving}
-              className="w-full sm:flex-1 min-h-[46px] rounded-xl bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-400 hover:to-teal-400 text-slate-950 font-bold text-sm flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(0,240,255,0.25)] transition-all cursor-pointer disabled:opacity-50"
+              className="w-full sm:flex-1 min-h-[46px] rounded-xl bg-teal-700 hover:bg-teal-800 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer disabled:opacity-50"
             >
               {isSaving ? (
                 <>
@@ -365,9 +370,9 @@ export default function UserProfileModal({
                   onClose();
                   onOpenSettings();
                 }}
-                className="w-full sm:w-auto px-4 min-h-[46px] rounded-xl bg-slate-800 hover:bg-slate-700 text-cyan-400 border border-cyan-900/40 text-xs font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                className="w-full sm:w-auto px-4 min-h-[46px] rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-teal-700 border border-slate-200 text-xs font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer"
               >
-                <Sparkles className="w-4 h-4" />
+                <Sparkles className="w-4 h-4 text-teal-600" />
                 <span>AI & Gemini Settings</span>
               </button>
             )}
@@ -377,4 +382,3 @@ export default function UserProfileModal({
     </div>
   );
 }
-

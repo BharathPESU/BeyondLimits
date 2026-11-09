@@ -89,7 +89,6 @@ export default function DisciplineDashboardClient({
   // Voice & Motivation state
   const [isSpeaking, setIsSpeaking] = useState<boolean>(false);
   const [loadingMotivation, setLoadingMotivation] = useState<boolean>(false);
-  const [awaitingFirstTap, setAwaitingFirstTap] = useState<boolean>(false);
 
   const activeAudioRef = useRef<HTMLAudioElement | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
@@ -340,7 +339,6 @@ export default function DisciplineDashboardClient({
 
           utterance.onstart = () => {
             setIsSpeaking(true);
-            setAwaitingFirstTap(false);
             startAudioTelemetryLoop();
           };
           utterance.onboundary = () => {
@@ -354,7 +352,6 @@ export default function DisciplineDashboardClient({
           utterance.onerror = () => {
             stopAudioTelemetryLoop();
             setIsSpeaking(false);
-            setAwaitingFirstTap(true);
             resolve(false);
           };
           window.speechSynthesis.speak(utterance);
@@ -394,7 +391,6 @@ export default function DisciplineDashboardClient({
           await new Promise<void>((resolve, reject) => {
             audio.onplay = () => {
               setIsSpeaking(true);
-              setAwaitingFirstTap(false);
               startAudioTelemetryLoop(audio);
             };
             audio.onended = () => {
@@ -418,17 +414,13 @@ export default function DisciplineDashboardClient({
         } catch (err) {
           const errName = err instanceof Error ? err.name : '';
           if (isAutoMount && errName === 'NotAllowedError') {
-            setAwaitingFirstTap(true);
             await playBrowserMaleFallbackPromise(scriptText);
             return;
           }
         }
       }
 
-      const ok = await playBrowserMaleFallbackPromise(scriptText);
-      if (!ok && isAutoMount) {
-        setAwaitingFirstTap(true);
-      }
+      await playBrowserMaleFallbackPromise(scriptText);
     },
     [
       playBrowserMaleFallbackPromise,
@@ -445,7 +437,7 @@ export default function DisciplineDashboardClient({
     [buildSpeechScript, speakCustomText]
   );
 
-  // Immediately speak motivation on website open
+  // Immediately speak motivation on website open once only
   useEffect(() => {
     if (hasAutoPlayedRef.current) return;
     hasAutoPlayedRef.current = true;
@@ -454,21 +446,6 @@ export default function DisciplineDashboardClient({
     }, 250);
     return () => clearTimeout(t);
   }, [dashboard.dailyMotivation, speakMotivation]);
-
-  // If browser blocked autoplay before first gesture, speak immediately on first tap anywhere
-  useEffect(() => {
-    if (!awaitingFirstTap) return;
-    const onFirstTap = () => {
-      setAwaitingFirstTap(false);
-      void speakMotivation(dashboard.dailyMotivation, false);
-    };
-    window.addEventListener('pointerdown', onFirstTap, { once: true });
-    window.addEventListener('keydown', onFirstTap, { once: true });
-    return () => {
-      window.removeEventListener('pointerdown', onFirstTap);
-      window.removeEventListener('keydown', onFirstTap);
-    };
-  }, [awaitingFirstTap, dashboard.dailyMotivation, speakMotivation]);
 
   const handleRefreshMotivation = async () => {
     setLoadingMotivation(true);
@@ -571,48 +548,26 @@ export default function DisciplineDashboardClient({
               </SignUpButton>
             </Show>
             <Show when="signed-in">
-              <div className="flex items-center gap-1.5 sm:gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsProfileModalOpen(true)}
-                  className="p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-teal-700 border border-slate-200 transition-all cursor-pointer flex items-center gap-1 text-xs font-semibold"
-                  title="My Profile (Name, Age, DOB, Blood Group, Height, Place)"
-                  aria-label="Open User Profile"
-                >
-                  <User className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-teal-600" />
-                  <span className="hidden md:inline">Profile</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsSettingsModalOpen(true)}
-                  className="p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-cyan-700 border border-slate-200 transition-all cursor-pointer flex items-center gap-1 text-xs font-semibold"
-                  title="AI & Gemini Settings (Configure custom API key)"
-                  aria-label="Open AI Settings"
-                >
-                  <Settings className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-cyan-600" />
-                  <span className="hidden md:inline">AI Key</span>
-                </button>
-                <UserButton
-                  appearance={{
-                    elements: {
-                      userButtonAvatarBox: 'w-8 h-8 sm:w-9 sm:h-9 ring-2 ring-teal-600/30 hover:ring-teal-500 transition-all',
-                    },
-                  }}
-                >
-                  <UserButton.MenuItems>
-                    <UserButton.Action
-                      label="My Profile"
-                      labelIcon={<User className="w-4 h-4 text-teal-500" />}
-                      onClick={() => setIsProfileModalOpen(true)}
-                    />
-                    <UserButton.Action
-                      label="AI & Gemini Settings"
-                      labelIcon={<Settings className="w-4 h-4 text-cyan-500" />}
-                      onClick={() => setIsSettingsModalOpen(true)}
-                    />
-                  </UserButton.MenuItems>
-                </UserButton>
-              </div>
+              <UserButton
+                appearance={{
+                  elements: {
+                    userButtonAvatarBox: 'w-8 h-8 sm:w-9 sm:h-9 ring-2 ring-teal-600/30 hover:ring-teal-500 transition-all cursor-pointer',
+                  },
+                }}
+              >
+                <UserButton.MenuItems>
+                  <UserButton.Action
+                    label="My Profile"
+                    labelIcon={<User className="w-4 h-4 text-teal-600" />}
+                    onClick={() => setIsProfileModalOpen(true)}
+                  />
+                  <UserButton.Action
+                    label="AI & Gemini Settings"
+                    labelIcon={<Settings className="w-4 h-4 text-teal-600" />}
+                    onClick={() => setIsSettingsModalOpen(true)}
+                  />
+                </UserButton.MenuItems>
+              </UserButton>
             </Show>
             <PWAInstallButton />
           </div>

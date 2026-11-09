@@ -364,12 +364,12 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
               aria-label={isMusicEnabled ? 'Turn off workout music' : 'Turn on workout music'}
               className={`min-h-[40px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl transition-all cursor-pointer border ${
                 isMusicEnabled
-                  ? 'bg-cyan-950 text-cyan-300 border-cyan-800 shadow-[0_0_12px_rgba(0,240,255,0.2)]'
+                  ? 'bg-teal-50 text-teal-700 border-teal-200'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 border-slate-200 bg-white'
               }`}
               title={isMusicEnabled ? 'Turn off workout music' : 'Turn on workout music'}
             >
-              <Music className={`w-4 h-4 ${isMusicEnabled ? 'text-cyan-400' : 'text-slate-500'}`} />
+              <Music className={`w-4 h-4 ${isMusicEnabled ? 'text-teal-600' : 'text-slate-400'}`} />
               <span className="hidden xs:inline">{isMusicEnabled ? 'Music: ON' : 'Turn on Music'}</span>
             </button>
 
@@ -770,29 +770,29 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
                 </div>
 
                 {/* Workout Music Strip in Active Phase (YouTube 15 Tracks) */}
-                <div className="w-full max-w-sm mx-auto bg-slate-900 text-white rounded-xl p-3 border border-cyan-900/50 flex items-center justify-between gap-3 shadow-sm">
+                <div className="w-full max-w-sm mx-auto bg-slate-50 text-slate-900 rounded-2xl p-3 border border-slate-200 flex items-center justify-between gap-3 shadow-sm">
                   <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="p-2 rounded-lg bg-cyan-950 text-cyan-400 border border-cyan-800/40 shrink-0">
+                    <div className="p-2 rounded-xl bg-teal-50 text-teal-700 border border-teal-200/60 shrink-0">
                       <Music className="w-4 h-4" />
                     </div>
                     <div className="text-left min-w-0">
                       <div className="flex items-center gap-1.5">
-                        <span className="text-[10px] uppercase font-bold tracking-wider text-cyan-400">
-                          {isMusicEnabled ? (isMusicPlaying ? 'YouTube Workout Music' : 'Music Paused') : 'Music Off'}
+                        <span className="text-[10px] uppercase font-bold tracking-wider text-teal-700">
+                          {isMusicEnabled ? (isMusicPlaying ? 'Workout Music (YouTube)' : 'Music Paused') : 'Music Off'}
                         </span>
                         {isMusicEnabled && isMusicPlaying && (
                           <div className="flex items-center gap-0.5 h-2.5">
                             {[40, 80, 60, 100].map((h, i) => (
                               <span
                                 key={i}
-                                className="w-0.5 bg-cyan-400 rounded-full animate-pulse"
+                                className="w-0.5 bg-teal-600 rounded-full animate-pulse"
                                 style={{ height: `${h}%`, animationDelay: `${i * 120}ms` }}
                               />
                             ))}
                           </div>
                         )}
                       </div>
-                      <p className="text-xs font-semibold text-slate-200 truncate">
+                      <p className="text-xs font-bold text-slate-800 truncate">
                         {isMusicEnabled
                           ? `#${currentWorkoutSong.id}: ${currentWorkoutSong.title} — ${currentWorkoutSong.artist}`
                           : 'Tap to turn on workout music'}
@@ -800,12 +800,12 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-1 shrink-0">
+                  <div className="flex items-center gap-1.5 shrink-0">
                     {isMusicEnabled && (
                       <button
                         type="button"
                         onClick={nextWorkoutSong}
-                        className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-400 cursor-pointer"
+                        className="p-1.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 transition-colors cursor-pointer"
                         title="Next YouTube Track"
                         aria-label="Next YouTube Track"
                       >
@@ -815,32 +815,16 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
                     <button
                       type="button"
                       onClick={toggleWorkoutMusic}
-                      className={`px-2.5 py-1 text-[11px] font-bold rounded-lg transition-all cursor-pointer ${
+                      className={`px-2.5 py-1 text-[11px] font-bold rounded-xl transition-all cursor-pointer border ${
                         isMusicEnabled
-                          ? 'bg-cyan-500 text-slate-950 shadow-[0_0_8px_rgba(0,240,255,0.3)]'
-                          : 'bg-slate-800 text-slate-300 hover:text-white'
+                          ? 'bg-teal-700 hover:bg-teal-800 text-white border-teal-700 shadow-sm'
+                          : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200'
                       }`}
                     >
                       {isMusicEnabled ? 'ON' : 'OFF'}
                     </button>
                   </div>
                 </div>
-
-                {/* Visible YouTube Player for Active Workout */}
-                {isMusicEnabled && (
-                  <div className="w-full max-w-sm mx-auto aspect-video rounded-xl overflow-hidden border border-slate-200 bg-slate-950 shadow-sm">
-                    <iframe
-                      ref={workoutIframeRef}
-                      id="workout-youtube-iframe"
-                      key={`workout-yt-${currentWorkoutSong.id}-${workoutVideoId}`}
-                      src={`https://www.youtube-nocookie.com/embed/${workoutVideoId}?enablejsapi=1&autoplay=1&rel=0&modestbranding=1&playsinline=1`}
-                      title={`${currentWorkoutSong.title} - ${currentWorkoutSong.artist}`}
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
-                      className="w-full h-full border-0"
-                    />
-                  </div>
-                )}
 
                 <div className="flex items-center justify-between text-xs text-slate-500 pt-2 border-t border-slate-100">
                   <span>Exercise {currentIndex + 1} of 12</span>
@@ -947,29 +931,29 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
                 </div>
 
                 {/* Workout Music Strip in Rest Phase (YouTube 15 Tracks) */}
-                <div className="w-full bg-slate-900 text-white rounded-xl p-3 border border-cyan-900/50 flex items-center justify-between gap-3 shadow-sm">
+                <div className="w-full bg-slate-50 text-slate-900 rounded-2xl p-3 border border-slate-200 flex items-center justify-between gap-3 shadow-sm">
                   <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="p-2 rounded-lg bg-cyan-950 text-cyan-400 border border-cyan-800/40 shrink-0">
+                    <div className="p-2 rounded-xl bg-teal-50 text-teal-700 border border-teal-200/60 shrink-0">
                       <Music className="w-4 h-4" />
                     </div>
                     <div className="text-left min-w-0">
                       <div className="flex items-center gap-1.5">
-                        <span className="text-[10px] uppercase font-bold tracking-wider text-cyan-400">
-                          {isMusicEnabled ? (isMusicPlaying ? 'YouTube Workout Music' : 'Music Paused') : 'Music Off'}
+                        <span className="text-[10px] uppercase font-bold tracking-wider text-teal-700">
+                          {isMusicEnabled ? (isMusicPlaying ? 'Workout Music (YouTube)' : 'Music Paused') : 'Music Off'}
                         </span>
                         {isMusicEnabled && isMusicPlaying && (
                           <div className="flex items-center gap-0.5 h-2.5">
                             {[40, 80, 60, 100].map((h, i) => (
                               <span
                                 key={i}
-                                className="w-0.5 bg-cyan-400 rounded-full animate-pulse"
+                                className="w-0.5 bg-teal-600 rounded-full animate-pulse"
                                 style={{ height: `${h}%`, animationDelay: `${i * 120}ms` }}
                               />
                             ))}
                           </div>
                         )}
                       </div>
-                      <p className="text-xs font-semibold text-slate-200 truncate">
+                      <p className="text-xs font-bold text-slate-800 truncate">
                         {isMusicEnabled
                           ? `#${currentWorkoutSong.id}: ${currentWorkoutSong.title} — ${currentWorkoutSong.artist}`
                           : 'Tap to turn on workout music'}
@@ -977,12 +961,12 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-1 shrink-0">
+                  <div className="flex items-center gap-1.5 shrink-0">
                     {isMusicEnabled && (
                       <button
                         type="button"
                         onClick={nextWorkoutSong}
-                        className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-400 cursor-pointer"
+                        className="p-1.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 transition-colors cursor-pointer"
                         title="Next YouTube Track"
                         aria-label="Next YouTube Track"
                       >
@@ -992,32 +976,16 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
                     <button
                       type="button"
                       onClick={toggleWorkoutMusic}
-                      className={`px-2.5 py-1 text-[11px] font-bold rounded-lg transition-all cursor-pointer ${
+                      className={`px-2.5 py-1 text-[11px] font-bold rounded-xl transition-all cursor-pointer border ${
                         isMusicEnabled
-                          ? 'bg-cyan-500 text-slate-950 shadow-[0_0_8px_rgba(0,240,255,0.3)]'
-                          : 'bg-slate-800 text-slate-300 hover:text-white'
+                          ? 'bg-teal-700 hover:bg-teal-800 text-white border-teal-700 shadow-sm'
+                          : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200'
                       }`}
                     >
                       {isMusicEnabled ? 'ON' : 'OFF'}
                     </button>
                   </div>
                 </div>
-
-                {/* Visible YouTube Player for Rest Phase */}
-                {isMusicEnabled && (
-                  <div className="w-full aspect-video rounded-xl overflow-hidden border border-slate-200 bg-slate-950 shadow-sm mt-3">
-                    <iframe
-                      ref={workoutIframeRef}
-                      id="workout-youtube-iframe-rest"
-                      key={`workout-yt-rest-${currentWorkoutSong.id}-${workoutVideoId}`}
-                      src={`https://www.youtube-nocookie.com/embed/${workoutVideoId}?enablejsapi=1&autoplay=1&rel=0&modestbranding=1&playsinline=1`}
-                      title={`${currentWorkoutSong.title} - ${currentWorkoutSong.artist}`}
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
-                      className="w-full h-full border-0"
-                    />
-                  </div>
-                )}
 
                 <p className="text-[11px] text-slate-400">
                   Catch your breath and get ready for {nextExercise?.name || 'the next exercise'}
@@ -1173,6 +1141,64 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
                 className="object-contain"
               />
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* SINGLE PERSISTENT WORKOUT YOUTUBE MUSIC PLAYER                           */}
+      {/* Stays mounted continuously during Active <-> Rest so music NEVER restarts */}
+      {/* ========================================================================= */}
+      {isOpen && (phase === 'active' || phase === 'rest') && (
+        <div
+          className={`fixed bottom-4 right-4 z-50 w-72 sm:w-80 rounded-2xl overflow-hidden border border-slate-200 bg-white shadow-2xl transition-all duration-300 ${
+            isMusicEnabled ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 translate-y-6 pointer-events-none'
+          }`}
+        >
+          {/* Mini Player Control Bar */}
+          <div className="bg-slate-50 border-b border-slate-100 px-3 py-2 flex items-center justify-between">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="p-1 rounded-md bg-teal-50 text-teal-700 shrink-0">
+                <Music className="w-3.5 h-3.5" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] font-bold text-teal-700 uppercase tracking-wider">
+                    {isMusicPlaying ? 'Workout Music' : 'Music Paused'}
+                  </span>
+                  {isMusicPlaying && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-ping" />
+                  )}
+                </div>
+                <p className="text-xs font-bold text-slate-800 truncate">
+                  {currentWorkoutSong.title}
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={nextWorkoutSong}
+              className="p-1.5 rounded-lg bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 transition-colors cursor-pointer text-xs font-bold flex items-center gap-1 shrink-0"
+              title="Next Track"
+              aria-label="Next Track"
+            >
+              <SkipForward className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          {/* Embedded YouTube Player */}
+          <div className="w-full aspect-video bg-slate-950">
+            <iframe
+              ref={workoutIframeRef}
+              id="workout-persistent-youtube-iframe"
+              key={`workout-yt-track-${currentWorkoutSong.id}-${workoutVideoId}`}
+              src={`https://www.youtube-nocookie.com/embed/${workoutVideoId}?enablejsapi=1&autoplay=1&rel=0&modestbranding=1&playsinline=1`}
+              title={`${currentWorkoutSong.title} - ${currentWorkoutSong.artist}`}
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+              className="w-full h-full border-0"
+            />
           </div>
         </div>
       )}
