@@ -1,5 +1,4 @@
 // Sound and Text-to-Speech utilities for the Workout feature
-import { workoutMusicManager } from './workout-music-manager';
 
 class WorkoutSoundManager {
   private audioCtx: AudioContext | null = null;
@@ -46,8 +45,6 @@ class WorkoutSoundManager {
       }
 
       window.speechSynthesis.cancel();
-      // Temporarily pause background workout music while the coach speaks
-      workoutMusicManager.pauseForVoice();
 
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.rate = 1.0;
@@ -72,8 +69,6 @@ class WorkoutSoundManager {
           clearTimeout(this.speechSafetyTimer);
           this.speechSafetyTimer = null;
         }
-        // Seamlessly resume workout music continuation from where it was paused
-        workoutMusicManager.resumeAfterVoice();
         onComplete?.();
       };
 
@@ -88,7 +83,6 @@ class WorkoutSoundManager {
       window.speechSynthesis.speak(utterance);
     } catch {
       // Graceful fallback if speech synthesis throws or is blocked
-      workoutMusicManager.resumeAfterVoice();
       onComplete?.();
     }
   }
@@ -159,7 +153,6 @@ class WorkoutSoundManager {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel();
     }
-    workoutMusicManager.resumeAfterVoice();
   }
 }
 

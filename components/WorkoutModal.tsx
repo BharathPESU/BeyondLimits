@@ -26,7 +26,7 @@ import {
 } from 'lucide-react';
 import { WORKOUT_EXERCISES, WorkoutExercise } from '@/lib/workout-data';
 import { workoutSound } from '@/lib/workout-sound';
-import { workoutMusicManager, WORKOUT_TRACKS } from '@/lib/workout-music-manager';
+import { MOTIVATIONAL_SONGS, MotivationalSong } from '@/lib/motivation-media-data';
 
 type WorkoutPhase = 'overview' | 'ready' | 'active' | 'rest' | 'completed';
 
@@ -49,24 +49,64 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
   const [liveWorkoutStreak, setLiveWorkoutStreak] = useState<number | null>(null);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
   const [isMusicEnabled, setIsMusicEnabled] = useState<boolean>(true);
-  const [musicState, setMusicState] = useState(workoutMusicManager.getState());
+  const [workoutSongIndex, setWorkoutSongIndex] = useState<number>(0);
+  const [isMusicPlaying, setIsMusicPlaying] = useState<boolean>(false);
 
+  const workoutIframeRef = useRef<HTMLIFrameElement | null>(null);
+  const keepAliveAudioRef = useRef<HTMLAudioElement | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const hasSpokenReadyRef = useRef<boolean>(false);
   const hasSpokenHalfwayRef = useRef<boolean>(false);
 
-  // Subscribe to background music manager
-  useEffect(() => {
-    const unsub = workoutMusicManager.subscribe((state) => {
-      setMusicState(state);
-      setIsMusicEnabled(state.isWorkoutMusicEnabled);
-    });
-    return unsub;
-  }, []);
+  const currentWorkoutSong: MotivationalSong =
+    MOTIVATIONAL_SONGS[workoutSongIndex % MOTIVATIONAL_SONGS.length];
+  const workoutVideoId = currentWorkoutSong.defaultVideoIds[0];
 
   const currentExercise: WorkoutExercise = WORKOUT_EXERCISES[currentIndex] || WORKOUT_EXERCISES[0];
   const nextExercise: WorkoutExercise | null =
     currentIndex + 1 < WORKOUT_EXERCISES.length ? WORKOUT_EXERCISES[currentIndex + 1] : null;
+
+  // PostMessage helper to control YouTube iframe playback
+  const sendIframeCommand = useCallback((func: string, args: unknown[] = []) => {
+    try {
+      if (workoutIframeRef.current?.contentWindow) {
+        workoutIframeRef.current.contentWindow.postMessage(
+          JSON.stringify({ event: 'command', func, args }),
+          '*'
+        );
+      }
+    } catch {
+      // Ignore postMessage failure
+    }
+  }, []);
+
+  const playWorkoutMusic = useCallback(() => {
+    if (!isMusicEnabled) return;
+    sendIframeCommand('playVideo');
+    setIsMusicPlaying(true);
+  }, [isMusicEnabled, sendIframeCommand]);
+
+  const pauseWorkoutMusic = useCallback(() => {
+    sendIframeCommand('pauseVideo');
+    setIsMusicPlaying(false);
+  }, [sendIframeCommand]);
+
+  const nextWorkoutSong = useCallback(() => {
+    setWorkoutSongIndex((prev) => (prev + 1) % MOTIVATIONAL_SONGS.length);
+    setIsMusicPlaying(true);
+  }, []);
+
+  const toggleWorkoutMusic = () => {
+    setIsMusicEnabled((prev) => {
+      const next = !prev;
+      if (!next) {
+        pauseWorkoutMusic();
+      } else {
+        playWorkoutMusic();
+      }
+      return next;
+    });
+  };
 
   // Toggle audio mute
   const toggleMute = () => {
@@ -75,18 +115,14 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
     workoutSound.setMuted(nextMuted);
   };
 
-  // Toggle workout background music
-  const toggleWorkoutMusic = () => {
-    const next = workoutMusicManager.toggleWorkoutMusic();
-    setIsMusicEnabled(next);
-  };
-
   // Close and cleanup
   const handleClose = useCallback(() => {
-    workoutMusicManager.setWorkoutMusicEnabled(false);
-    workoutMusicManager.pause();
+    pauseWorkoutMusic();
     workoutSound.stopAll();
     if (timerRef.current) clearInterval(timerRef.current);
+    if (keepAliveAudioRef.current) {
+      keepAliveAudioRef.current.pause();
+    }
     setPhase('overview');
     setCurrentIndex(0);
     setTimeLeft(60);
@@ -94,19 +130,18 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
     setShowTipsModal(false);
     setEnlargedImage(null);
     onClose();
-  }, [onClose]);
+  }, [onClose, pauseWorkoutMusic]);
 
   // Start workout from overview
   const startWorkout = useCallback(() => {
     setCurrentIndex(0);
+    setWorkoutSongIndex(0);
     setTimeLeft(10); // 10s "Ready to go" countdown
     setPhase('ready');
     setIsPaused(false);
     setTotalSecondsElapsed(0);
     hasSpokenReadyRef.current = false;
     hasSpokenHalfwayRef.current = false;
-    workoutMusicManager.setPlaylist(WORKOUT_TRACKS, 0);
-    workoutMusicManager.setWorkoutMusicEnabled(true);
   }, []);
 
   // Move directly into the active exercise
@@ -118,24 +153,70 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
     setIsPaused(false);
     hasSpokenHalfwayRef.current = false;
     workoutSound.playBeep('start');
-    workoutSound.speak(`${exercise.name}. Go!`);
-  }, []);
+    workoutSound.speak(`${exercise.name}. Let's go!`, () => {
+      if (isMusicEnabled && !isPaused) {
+        playWorkoutMusic();
+      }
+    });
+    // Ensure music is active and playing during the 1-minute exercise
+    if (isMusicEnabled && !isPaused) {
+      playWorkoutMusic();
+    }
+  }, [isMusicEnabled, isPaused, playWorkoutMusic]);
 
   // Complete an active exercise and transition to rest or complete
   const handleExerciseComplete = useCallback(() => {
     workoutSound.playBeep('rest');
+    pauseWorkoutMusic();
+
     if (currentIndex + 1 < WORKOUT_EXERCISES.length) {
       const upcoming = WORKOUT_EXERCISES[currentIndex + 1];
       setPhase('rest');
       setTimeLeft(30); // 30-second rest
       setIsPaused(false);
-      workoutSound.speak(`You have completed ${currentExercise.name}. Rest time. Next up is ${upcoming.name}.`);
+      // Voice speaks completion and upcoming exercise, then music resumes playing continuation
+      workoutSound.speak(
+        `You have completed ${currentExercise.name}. Rest time. Next up is ${upcoming.name}.`,
+        () => {
+          if (isMusicEnabled) {
+            playWorkoutMusic();
+          }
+        }
+      );
     } else {
       setPhase('completed');
+      pauseWorkoutMusic();
       workoutSound.playBeep('complete');
       workoutSound.speak('Congratulations! Workout completed. Great job on keeping your streak alive!');
     }
-  }, [currentIndex, currentExercise]);
+  }, [currentIndex, currentExercise, isMusicEnabled, pauseWorkoutMusic, playWorkoutMusic]);
+
+  // Autoplay next YouTube motivational song in order when current video finishes (info === 0)
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleWindowMessage = (event: MessageEvent) => {
+      try {
+        const raw = event.data;
+        const data = typeof raw === 'string' ? JSON.parse(raw) : raw;
+        if (!data) return;
+
+        if (
+          (data.event === 'onStateChange' && data.info === 0) ||
+          data.info?.playerState === 0
+        ) {
+          nextWorkoutSong();
+        }
+      } catch {
+        // Ignore non-json messages
+      }
+    };
+
+    window.addEventListener('message', handleWindowMessage);
+    return () => {
+      window.removeEventListener('message', handleWindowMessage);
+    };
+  }, [isOpen, nextWorkoutSong]);
 
   // Skip rest and start next exercise
   const skipRest = useCallback(() => {
@@ -654,9 +735,9 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
                       setIsPaused((prev) => {
                         const next = !prev;
                         if (next) {
-                          workoutMusicManager.pause();
+                          pauseWorkoutMusic();
                         } else if (isMusicEnabled) {
-                          void workoutMusicManager.play();
+                          playWorkoutMusic();
                         }
                         return next;
                       });
@@ -688,7 +769,7 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
                   </button>
                 </div>
 
-                {/* Workout Music Strip in Active Phase */}
+                {/* Workout Music Strip in Active Phase (YouTube 15 Tracks) */}
                 <div className="w-full max-w-sm mx-auto bg-slate-900 text-white rounded-xl p-3 border border-cyan-900/50 flex items-center justify-between gap-3 shadow-sm">
                   <div className="flex items-center gap-2.5 min-w-0">
                     <div className="p-2 rounded-lg bg-cyan-950 text-cyan-400 border border-cyan-800/40 shrink-0">
@@ -697,9 +778,9 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
                     <div className="text-left min-w-0">
                       <div className="flex items-center gap-1.5">
                         <span className="text-[10px] uppercase font-bold tracking-wider text-cyan-400">
-                          {isMusicEnabled ? (musicState.isPlaying ? 'Workout Music' : 'Music Paused') : 'Music Off'}
+                          {isMusicEnabled ? (isMusicPlaying ? 'YouTube Workout Music' : 'Music Paused') : 'Music Off'}
                         </span>
-                        {isMusicEnabled && musicState.isPlaying && (
+                        {isMusicEnabled && isMusicPlaying && (
                           <div className="flex items-center gap-0.5 h-2.5">
                             {[40, 80, 60, 100].map((h, i) => (
                               <span
@@ -712,7 +793,9 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
                         )}
                       </div>
                       <p className="text-xs font-semibold text-slate-200 truncate">
-                        {isMusicEnabled ? musicState.currentTrack.title : 'Tap to enable music'}
+                        {isMusicEnabled
+                          ? `#${currentWorkoutSong.id}: ${currentWorkoutSong.title} — ${currentWorkoutSong.artist}`
+                          : 'Tap to turn on workout music'}
                       </p>
                     </div>
                   </div>
@@ -721,9 +804,10 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
                     {isMusicEnabled && (
                       <button
                         type="button"
-                        onClick={() => void workoutMusicManager.next()}
+                        onClick={nextWorkoutSong}
                         className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-400 cursor-pointer"
-                        title="Next Track"
+                        title="Next YouTube Track"
+                        aria-label="Next YouTube Track"
                       >
                         <SkipForward className="w-3.5 h-3.5" />
                       </button>
@@ -741,6 +825,22 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
                     </button>
                   </div>
                 </div>
+
+                {/* Visible YouTube Player for Active Workout */}
+                {isMusicEnabled && (
+                  <div className="w-full max-w-sm mx-auto aspect-video rounded-xl overflow-hidden border border-slate-200 bg-slate-950 shadow-sm">
+                    <iframe
+                      ref={workoutIframeRef}
+                      id="workout-youtube-iframe"
+                      key={`workout-yt-${currentWorkoutSong.id}-${workoutVideoId}`}
+                      src={`https://www.youtube-nocookie.com/embed/${workoutVideoId}?enablejsapi=1&autoplay=1&rel=0&modestbranding=1&playsinline=1`}
+                      title={`${currentWorkoutSong.title} - ${currentWorkoutSong.artist}`}
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                      className="w-full h-full border-0"
+                    />
+                  </div>
+                )}
 
                 <div className="flex items-center justify-between text-xs text-slate-500 pt-2 border-t border-slate-100">
                   <span>Exercise {currentIndex + 1} of 12</span>
@@ -846,7 +946,7 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
                   </button>
                 </div>
 
-                {/* Workout Music Strip in Rest Phase */}
+                {/* Workout Music Strip in Rest Phase (YouTube 15 Tracks) */}
                 <div className="w-full bg-slate-900 text-white rounded-xl p-3 border border-cyan-900/50 flex items-center justify-between gap-3 shadow-sm">
                   <div className="flex items-center gap-2.5 min-w-0">
                     <div className="p-2 rounded-lg bg-cyan-950 text-cyan-400 border border-cyan-800/40 shrink-0">
@@ -855,9 +955,9 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
                     <div className="text-left min-w-0">
                       <div className="flex items-center gap-1.5">
                         <span className="text-[10px] uppercase font-bold tracking-wider text-cyan-400">
-                          {isMusicEnabled ? (musicState.isPlaying ? 'Music Playing' : 'Music Paused') : 'Music Off'}
+                          {isMusicEnabled ? (isMusicPlaying ? 'YouTube Workout Music' : 'Music Paused') : 'Music Off'}
                         </span>
-                        {isMusicEnabled && musicState.isPlaying && (
+                        {isMusicEnabled && isMusicPlaying && (
                           <div className="flex items-center gap-0.5 h-2.5">
                             {[40, 80, 60, 100].map((h, i) => (
                               <span
@@ -870,7 +970,9 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
                         )}
                       </div>
                       <p className="text-xs font-semibold text-slate-200 truncate">
-                        {isMusicEnabled ? musicState.currentTrack.title : 'Tap to enable music'}
+                        {isMusicEnabled
+                          ? `#${currentWorkoutSong.id}: ${currentWorkoutSong.title} — ${currentWorkoutSong.artist}`
+                          : 'Tap to turn on workout music'}
                       </p>
                     </div>
                   </div>
@@ -879,9 +981,10 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
                     {isMusicEnabled && (
                       <button
                         type="button"
-                        onClick={() => void workoutMusicManager.next()}
+                        onClick={nextWorkoutSong}
                         className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-400 cursor-pointer"
-                        title="Next Track"
+                        title="Next YouTube Track"
+                        aria-label="Next YouTube Track"
                       >
                         <SkipForward className="w-3.5 h-3.5" />
                       </button>
@@ -899,6 +1002,22 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
                     </button>
                   </div>
                 </div>
+
+                {/* Visible YouTube Player for Rest Phase */}
+                {isMusicEnabled && (
+                  <div className="w-full aspect-video rounded-xl overflow-hidden border border-slate-200 bg-slate-950 shadow-sm mt-3">
+                    <iframe
+                      ref={workoutIframeRef}
+                      id="workout-youtube-iframe-rest"
+                      key={`workout-yt-rest-${currentWorkoutSong.id}-${workoutVideoId}`}
+                      src={`https://www.youtube-nocookie.com/embed/${workoutVideoId}?enablejsapi=1&autoplay=1&rel=0&modestbranding=1&playsinline=1`}
+                      title={`${currentWorkoutSong.title} - ${currentWorkoutSong.artist}`}
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                      className="w-full h-full border-0"
+                    />
+                  </div>
+                )}
 
                 <p className="text-[11px] text-slate-400">
                   Catch your breath and get ready for {nextExercise?.name || 'the next exercise'}
