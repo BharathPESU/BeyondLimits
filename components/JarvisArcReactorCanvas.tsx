@@ -24,6 +24,16 @@ export default function JarvisArcReactorCanvas({
   onReplayVoice,
 }: JarvisArcReactorCanvasProps) {
   const mountRef = useRef<HTMLDivElement | null>(null);
+  const onReplayVoiceRef = useRef(onReplayVoice);
+  const isSpeakingRef = useRef(isSpeaking);
+
+  useEffect(() => {
+    onReplayVoiceRef.current = onReplayVoice;
+  }, [onReplayVoice]);
+
+  useEffect(() => {
+    isSpeakingRef.current = isSpeaking;
+  }, [isSpeaking]);
 
   useEffect(() => {
     const container = mountRef.current;
@@ -576,7 +586,7 @@ export default function JarvisArcReactorCanvas({
 
     const onClickCanvas = () => {
       shockwaveProgress = 0.01;
-      onReplayVoice();
+      onReplayVoiceRef.current?.();
     };
 
     container.addEventListener('mousemove', onPointerMove);
@@ -600,7 +610,7 @@ export default function JarvisArcReactorCanvas({
       const voiceLevel = telemetry.level || 0;
       const voiceBass = telemetry.bass || 0;
       const voiceTreble = telemetry.treble || 0;
-      const speaking = isSpeaking || telemetry.isSpeaking;
+      const speaking = isSpeakingRef.current || telemetry.isSpeaking;
 
       // Smooth pointer parallax interpolation
       mouse.x += (mouse.targetX - mouse.x) * 0.08;
@@ -770,7 +780,7 @@ export default function JarvisArcReactorCanvas({
       });
       renderer.dispose();
     };
-  }, [telemetryRef, isSpeaking, onReplayVoice]);
+  }, [telemetryRef]);
 
   return (
     <div

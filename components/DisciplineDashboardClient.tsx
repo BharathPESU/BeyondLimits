@@ -52,6 +52,15 @@ import PWAInstallButton from './PWAInstallButton';
 import VoiceFireCanvas, { VoiceAudioTelemetry } from './VoiceFireCanvas';
 import JarvisArcReactorCanvas from './JarvisArcReactorCanvas';
 
+const MAIN_VOICE_QUOTES = [
+  '/assets/aistudio/main_voice/main_voice_1.mp3', // Quote 1: Initial welcome on app open (only once)
+  '/assets/aistudio/main_voice/main_voice_2.mp3', // Quote 2: 1st Jarvis click
+  '/assets/aistudio/main_voice/main_voice_3.mp3', // Quote 3: 2nd Jarvis click
+  '/assets/aistudio/main_voice/main_voice_4.mp3', // Quote 4: 3rd Jarvis click
+  '/assets/aistudio/main_voice/main_voice_5.mp3', // Quote 5: 4th Jarvis click
+  '/assets/aistudio/main_voice/main_voice_6.mp3', // Quote 6: 5th Jarvis click
+] as const;
+
 interface DisciplineDashboardClientProps {
   initialData: DashboardPayload;
 }
@@ -95,6 +104,7 @@ export default function DisciplineDashboardClient({
   const analyserTimerRef = useRef<number | null>(null);
   const wordPulseBoostRef = useRef<number>(0);
   const hasAutoPlayedRef = useRef<boolean>(false);
+  const jarvisQuoteIndexRef = useRef<number>(1); // Index 1 is Quote 2 in MAIN_VOICE_QUOTES
   const auto8PmTriggeredRef = useRef<string>(
     initialData.reminderConfig.lastTriggeredDate || ''
   );
@@ -302,10 +312,6 @@ export default function DisciplineDashboardClient({
     [stopAudioTelemetryLoop]
   );
 
-  const buildSpeechScript = useCallback((rec: DailyMotivationRecord) => {
-    return `Daily Motivation for Bharath C D and Bharath R. ${rec.headline}. ${rec.quote}, by ${rec.author}. ${rec.actionableHabit}`;
-  }, []);
-
   const stopVoice = useCallback(() => {
     if (activeAudioRef.current) {
       activeAudioRef.current.pause();
@@ -430,22 +436,87 @@ export default function DisciplineDashboardClient({
     ]
   );
 
-  const speakMotivation = useCallback(
-    async (rec: DailyMotivationRecord, isAutoMount = false) => {
-      await speakCustomText(buildSpeechScript(rec), isAutoMount);
+  const playMainVoiceClip = useCallback(
+    async (clipUrl: string, isAutoMount = false): Promise<void> => {
+      stopVoice();
+
+      try {
+        const audio = new Audio(clipUrl);
+        audio.preload = 'auto';
+        activeAudioRef.current = audio;
+
+        await new Promise<void>((resolve, reject) => {
+          audio.onplay = () => {
+            setIsSpeaking(true);
+            startAudioTelemetryLoop(audio);
+          };
+          audio.onended = () => {
+            stopAudioTelemetryLoop();
+            setIsSpeaking(false);
+            activeAudioRef.current = null;
+            resolve();
+          };
+          audio.onpause = () => {
+            stopAudioTelemetryLoop();
+            setIsSpeaking(false);
+            resolve();
+          };
+          audio.onerror = () => {
+            stopAudioTelemetryLoop();
+            setIsSpeaking(false);
+            activeAudioRef.current = null;
+            reject(new Error(`Failed to load audio: ${clipUrl}`));
+          };
+
+          const playPromise = audio.play();
+          if (playPromise !== undefined) {
+            playPromise.catch((err) => {
+              stopAudioTelemetryLoop();
+              setIsSpeaking(false);
+              activeAudioRef.current = null;
+              if (isAutoMount && err.name === 'NotAllowedError') {
+                const handleFirstUserInteraction = () => {
+                  window.removeEventListener('pointerdown', handleFirstUserInteraction);
+                  window.removeEventListener('keydown', handleFirstUserInteraction);
+                  void playMainVoiceClip(clipUrl, false);
+                };
+                window.addEventListener('pointerdown', handleFirstUserInteraction, { once: true });
+                window.addEventListener('keydown', handleFirstUserInteraction, { once: true });
+              }
+              resolve();
+            });
+          }
+        });
+      } catch {
+        stopAudioTelemetryLoop();
+        setIsSpeaking(false);
+      }
     },
-    [buildSpeechScript, speakCustomText]
+    [startAudioTelemetryLoop, stopAudioTelemetryLoop, stopVoice]
   );
 
-  // Immediately speak motivation on website open once only
+  const handleJarvisClick = useCallback(() => {
+    // Current quote index from the 2-6 sequence (1 to 5)
+    const currentIdx = jarvisQuoteIndexRef.current;
+    const clipUrl = MAIN_VOICE_QUOTES[currentIdx] || MAIN_VOICE_QUOTES[1];
+
+    // Play the current quote
+    void playMainVoiceClip(clipUrl, false);
+
+    // Advance to next quote in the loop: 2 -> 3 -> 4 -> 5 -> 6 -> 2 -> 3...
+    // In 0-based indices: 1 -> 2 -> 3 -> 4 -> 5 -> 1 -> 2...
+    jarvisQuoteIndexRef.current = currentIdx >= 5 ? 1 : currentIdx + 1;
+  }, [playMainVoiceClip]);
+
+  // Immediately speak Quote 1 (and only Quote 1) once only when website opens
   useEffect(() => {
     if (hasAutoPlayedRef.current) return;
     hasAutoPlayedRef.current = true;
     const t = setTimeout(() => {
-      void speakMotivation(dashboard.dailyMotivation, true);
-    }, 250);
+      void playMainVoiceClip(MAIN_VOICE_QUOTES[0], true);
+    }, 350);
     return () => clearTimeout(t);
-  }, [dashboard.dailyMotivation, speakMotivation]);
+  }, [playMainVoiceClip]);
 
   const handleRefreshMotivation = async () => {
     setLoadingMotivation(true);
@@ -456,11 +527,9 @@ export default function DisciplineDashboardClient({
         body: JSON.stringify({}),
       });
       if (res.ok) {
-        const data = await res.json();
+        await res.json();
         await refreshDashboard();
-        if (data.motivation) {
-          await speakMotivation(data.motivation, false);
-        }
+        handleJarvisClick();
       }
     } finally {
       setLoadingMotivation(false);
@@ -578,7 +647,7 @@ export default function DisciplineDashboardClient({
           <JarvisArcReactorCanvas
             telemetryRef={telemetryRef}
             isSpeaking={isSpeaking}
-            onReplayVoice={() => void speakMotivation(motivation, false)}
+            onReplayVoice={handleJarvisClick}
           />
 
           {/* Voice Playback & Refresh Controls */}
@@ -590,11 +659,11 @@ export default function DisciplineDashboardClient({
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => void speakMotivation(motivation, false)}
+                onClick={handleJarvisClick}
                 className="min-h-[40px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-amber-500 text-slate-950 hover:bg-amber-400 rounded-xl transition-colors cursor-pointer"
               >
                 <Volume2 className="w-4 h-4" />
-                <span>{isSpeaking ? 'Speaking...' : 'Read Voice'}</span>
+                <span>{isSpeaking ? 'Speaking...' : 'Play Voice'}</span>
               </button>
 
               {isSpeaking && (
@@ -1029,7 +1098,7 @@ export default function DisciplineDashboardClient({
         onClose={() => setIsMotivationHubOpen(false)}
         dailyMotivation={motivation}
         isSpeaking={isSpeaking}
-        onSpeakDailyMotivation={() => void speakMotivation(motivation, false)}
+        onSpeakDailyMotivation={handleJarvisClick}
         onOpenSongs={() => {
           setIsMotivationHubOpen(false);
           setIsSongsOpen(true);

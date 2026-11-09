@@ -15,3 +15,4 @@ export const ALLOWED_ADMIN_TABLES = [
 ] as const;
 
 export type AdminTableName = (typeof ALLOWED_ADMIN_TABLES)[number];
+
