@@ -10,8 +10,10 @@
     "clean": "next clean"
   },
   "dependencies": {
+    "@clerk/nextjs": "^7.9.25",
     "@google/genai": "^3.0.0",
     "@hookform/resolvers": "^5.2.1",
+    "@supabase/supabase-js": "^2.119.0",
     "@types/better-sqlite3": "^9.6.0",
     "@types/three": "^0.187.0",
     "autoprefixer": "^10.4.21",

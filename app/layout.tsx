@@ -1,3 +1,4 @@
+import { ClerkProvider } from '@clerk/nextjs';
 import type { Metadata, Viewport } from 'next';
 import { Plus_Jakarta_Sans, JetBrains_Mono } from 'next/font/google';
 import Script from 'next/script';
@@ -31,7 +32,11 @@ export const metadata: Metadata = {
     title: 'Discipline',
   },
   icons: {
-    icon: '/icon.svg',
+    icon: [
+      { url: '/favicon.ico' },
+      { url: '/icon.png', sizes: '32x32', type: 'image/png' },
+      { url: '/pwa-192x192.png', sizes: '192x192', type: 'image/png' },
+    ],
     apple: '/apple-touch-icon.png',
   },
   openGraph: {
@@ -58,7 +63,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         suppressHydrationWarning
         className="min-h-screen bg-slate-50 text-slate-900 antialiased font-sans selection:bg-teal-600 selection:text-white"
       >
-        {children}
+        <ClerkProvider
+          appearance={{
+            options: {
+              unsafe_disableDevelopmentModeWarnings: true,
+            },
+          }}
+        >
+          {children}
+        </ClerkProvider>
       </body>
     </html>
   );

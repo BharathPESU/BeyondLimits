@@ -3,15 +3,15 @@ import type { MetadataRoute } from 'next';
 export default function manifest(): MetadataRoute.Manifest {
   return {
     id: '/',
-    name: 'Bharath CD & Bharath R — Discipline & Attendance Tracker',
-    short_name: 'Discipline',
+    name: 'BeyondLimits — Discipline & Workout Tracker',
+    short_name: 'BeyondLimits',
     description:
-      'Daily motivation with strong male voice, progress graph, and strict self-control attendance for Bharath CD and Bharath R.',
+      'Daily motivation with strong voice, progress analytics, and 12-exercise home workout for Bharath CD and Bharath R.',
     start_url: '/',
     scope: '/',
     display: 'standalone',
     orientation: 'portrait',
-    background_color: '#0f172a',
+    background_color: '#000000',
     theme_color: '#0f172a',
     icons: [
       {

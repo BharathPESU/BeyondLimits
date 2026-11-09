@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import Image from 'next/image';
 import {
   BarChart,
   Bar,
@@ -25,7 +26,9 @@ import {
   Sparkles,
   Newspaper,
   MessageSquare,
+  Dumbbell,
 } from 'lucide-react';
+import { SignInButton, SignUpButton, Show, UserButton } from '@clerk/nextjs';
 import {
   DailyMotivationRecord,
   DailyTechNewsRecord,
@@ -40,6 +43,7 @@ import QuotesModal from './QuotesModal';
 import MotivationHubModal from './MotivationHubModal';
 import NewsModal from './NewsModal';
 import MotivationalChatModal from './MotivationalChatModal';
+import WorkoutModal from './WorkoutModal';
 import PWAInstallButton from './PWAInstallButton';
 import VoiceFireCanvas, { VoiceAudioTelemetry } from './VoiceFireCanvas';
 
@@ -60,6 +64,7 @@ export default function DisciplineDashboardClient({
   const [isQuotesOpen, setIsQuotesOpen] = useState<boolean>(false);
   const [isNewsOpen, setIsNewsOpen] = useState<boolean>(false);
   const [isChatOpen, setIsChatOpen] = useState<boolean>(false);
+  const [isWorkoutOpen, setIsWorkoutOpen] = useState<boolean>(false);
 
   // Daily 7:00 AM AI & Tech News state
   const [newsRecord, setNewsRecord] = useState<DailyTechNewsRecord | null>(
@@ -511,9 +516,65 @@ export default function DisciplineDashboardClient({
     <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900 pb-24">
       {/* Main Focused Content: ONLY Motivation & Progress Graph */}
       <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 pt-4 space-y-6">
-        <div className="flex items-center justify-end">
-          <PWAInstallButton />
-        </div>
+        {/* Top Header / BeyondLimits Brand Logo Bar */}
+        <header className="flex items-center justify-between pb-2 pt-1 border-b border-slate-200">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl overflow-hidden bg-black p-1 shadow-md border border-slate-800 shrink-0">
+              <Image
+                src="/logo.png"
+                alt="BeyondLimits Logo"
+                width={44}
+                height={44}
+                priority
+                className="w-full h-full object-contain"
+              />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-lg sm:text-xl font-black tracking-tight text-slate-900">
+                  Beyond<span className="text-teal-700">Limits</span>
+                </span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-50 text-teal-700 border border-teal-200">
+                  Discipline &amp; Fitness
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 hidden sm:block">
+                Bharath CD &amp; Bharath R
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 sm:gap-3">
+            <Show when="signed-out">
+              <SignInButton mode="modal">
+                <button
+                  type="button"
+                  className="px-3 py-1.5 rounded-xl bg-teal-700 hover:bg-teal-800 text-white font-semibold text-xs shadow-sm transition-all cursor-pointer"
+                >
+                  Sign In
+                </button>
+              </SignInButton>
+              <SignUpButton mode="modal">
+                <button
+                  type="button"
+                  className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold text-xs border border-slate-200 transition-all cursor-pointer hidden sm:inline-block"
+                >
+                  Sign Up
+                </button>
+              </SignUpButton>
+            </Show>
+            <Show when="signed-in">
+              <UserButton
+                appearance={{
+                  elements: {
+                    userButtonAvatarBox: 'w-8 h-8 sm:w-9 sm:h-9 ring-2 ring-teal-600/30',
+                  },
+                }}
+              />
+            </Show>
+            <PWAInstallButton />
+          </div>
+        </header>
         {/* 1. DAILY MOTIVATION + THREE.JS FIRE & VOICE-REACTIVE PARTICLE STAGE */}
         <section className="bg-slate-900 text-white rounded-2xl p-5 sm:p-6 border border-slate-800 space-y-5">
           {/* Three.js Opening Fire & Voice-Synced Particle Stage */}
@@ -876,12 +937,12 @@ export default function DisciplineDashboardClient({
         </section>
       </main>
 
-      {/* Fixed Bottom Navigation Bar: Attendance, Calendar, Motivation, News, Chat */}
+      {/* Fixed Bottom Navigation Bar: Attendance, Calendar, Exercise, Motivation, News, Chat */}
       <nav
         aria-label="Primary Bottom Navigation"
         className="fixed bottom-0 left-0 right-0 z-30 p-2.5 bg-white/95 backdrop-blur-md border-t border-slate-200"
       >
-        <div className="grid grid-cols-5 gap-1.5 max-w-xl mx-auto">
+        <div className="grid grid-cols-6 gap-1 max-w-xl mx-auto">
           <button
             type="button"
             onClick={() => openAttendanceFor('bharath_cd')}
@@ -898,6 +959,15 @@ export default function DisciplineDashboardClient({
           >
             <Calendar className="w-4 h-4 text-teal-700" />
             <span>Calendar</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setIsWorkoutOpen(true)}
+            className="min-h-[46px] rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-900 font-semibold text-[11px] flex flex-col items-center justify-center gap-0.5 transition-colors cursor-pointer"
+          >
+            <Dumbbell className="w-4 h-4 text-teal-700" />
+            <span>Exercise</span>
           </button>
 
           <button
@@ -1019,6 +1089,12 @@ export default function DisciplineDashboardClient({
         onSpeakText={(text) => speakCustomText(text, false)}
         onStopVoice={stopVoice}
         isSpeaking={isSpeaking}
+      />
+
+      {/* 12-Exercise Workout Modal */}
+      <WorkoutModal
+        isOpen={isWorkoutOpen}
+        onClose={() => setIsWorkoutOpen(false)}
       />
     </div>
   );

@@ -3,5 +3,10 @@ node_modules/
 coverage/
 .DS_Store
 *.log
+*.tsbuildinfo
+data/
 .env*
 !.env.example
+.vercel/
+.turbo/
+

@@ -1,1 +1,95 @@
 @import "tailwindcss";
+
+/* ==========================================================================
+   Clerk Custom Styling & Watermark Removal (Clean White Theme)
+   ========================================================================== */
+
+/* Completely hide Clerk development mode badges, notices, and "Secured by Clerk" watermark */
+.cl-dev-badge,
+.cl-dev-mode-notice,
+.cl-developmentMode,
+.cl-badge,
+.cl-footerPages,
+.cl-footerPagesLink,
+.cl-internal-b3fm6y,
+.cl-internal-1dauvpw,
+.cl-internal-10y6z4n,
+.cl-internal-ph3z25,
+[data-localization-key*="developmentMode"],
+[data-localization-key*="securedByClerk"],
+[class*="developmentMode"],
+[class*="devMode"],
+[class*="devBadge"],
+a[href*="clerk.com"],
+svg[aria-label="Clerk logo"],
+.cl-footerItem:has(a[href*="clerk.com"]) {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  height: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+/* Prevent any circular clipping or giant oval masks */
+.cl-rootBox,
+.cl-cardBox,
+.cl-card {
+  border-radius: 1.5rem !important;
+  overflow: visible !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+  max-width: 100% !important;
+}
+
+/* Hide duplicate Clerk default headers ("Sign in to My Application") */
+.cl-header,
+.cl-formHeader,
+.cl-headerTitle,
+.cl-headerSubtitle,
+.cl-formHeaderTitle,
+.cl-formHeaderSubtitle {
+  display: none !important;
+  height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Ensure Clerk inputs, labels, and text have crystal clear high contrast on white background */
+.cl-formFieldInput {
+  color: #0f172a !important;
+  background-color: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+.cl-formFieldInput:focus {
+  border-color: #059669 !important;
+  box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.15) !important;
+}
+
+.cl-formFieldInput::placeholder {
+  color: #94a3b8 !important;
+  opacity: 1 !important;
+}
+
+.cl-formFieldLabel {
+  color: #334155 !important;
+  font-weight: 700 !important;
+}
+
+.cl-footerActionText {
+  color: #475569 !important;
+  font-weight: 500 !important;
+}
+
+.cl-footerActionLink {
+  color: #059669 !important;
+  font-weight: 700 !important;
+}
+
+.cl-footerActionLink:hover {
+  color: #047857 !important;
+  text-decoration: underline !important;
+}

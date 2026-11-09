@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getDashboardPayload, upsertAttendanceRecord } from '@/lib/db';
+import { syncAttendanceToSupabase } from '@/lib/supabase-service';
 
 export const dynamic = 'force-dynamic';
 
