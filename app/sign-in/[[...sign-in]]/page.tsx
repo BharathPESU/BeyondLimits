@@ -50,16 +50,41 @@ function SignInContent() {
 
       {/* Tab 1: Regular Athlete Login */}
       {activeTab === 'athlete' ? (
-        <SignIn
-          appearance={authClerkAppearance}
-          routing="path"
-          path="/sign-in"
-          signUpUrl="/sign-up"
-        />
+        <div className="w-full flex flex-col items-center space-y-3">
+          <SignIn
+            appearance={authClerkAppearance}
+            routing="path"
+            path="/sign-in"
+            signUpUrl="/sign-up"
+          />
+
+          {/* Simple Button with name "Admin Login" (Same colour as Continue button, directly below it) */}
+          <div className="w-full pt-2 border-t border-slate-200/80">
+            <button
+              type="button"
+              onClick={() => setActiveTab('admin')}
+              className="w-full bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 hover:from-emerald-700 hover:to-teal-700 active:from-emerald-800 active:to-teal-800 text-white font-bold rounded-2xl py-3.5 px-6 shadow-md shadow-emerald-600/20 active:scale-[0.98] transition-all duration-200 cursor-pointer text-sm tracking-wider uppercase flex items-center justify-center gap-2"
+            >
+              <ShieldCheck className="w-4 h-4" />
+              <span>Admin Login</span>
+            </button>
+          </div>
+        </div>
       ) : (
         /* Tab 2: Admin Portal with Username, Password & Microsoft Authenticator MFA */
-        <div className="p-4 sm:p-5 bg-white rounded-2xl border border-slate-200 shadow-sm">
-          <AdminLoginForm />
+        <div className="w-full space-y-4">
+          <div className="p-4 sm:p-5 bg-white rounded-2xl border border-slate-200 shadow-sm text-left">
+            <AdminLoginForm />
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('athlete')}
+            className="w-full bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 font-bold rounded-2xl py-3.5 px-4 transition-all duration-200 cursor-pointer text-xs uppercase tracking-wider flex items-center justify-center gap-2 border border-slate-200"
+          >
+            <User className="w-3.5 h-3.5 text-slate-500" />
+            <span>Back to Athlete Login</span>
+          </button>
         </div>
       )}
     </div>
