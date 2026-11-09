@@ -37,8 +37,13 @@ self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   const url = new URL(event.request.url);
 
-  // Don't cache API or Clerk requests
-  if (url.pathname.startsWith('/api') || url.hostname.includes('clerk')) {
+  // Don't cache API, Clerk requests, or audio streaming range requests
+  if (
+    url.pathname.startsWith('/api') ||
+    url.hostname.includes('clerk') ||
+    url.pathname.endsWith('.mp3') ||
+    url.pathname.startsWith('/audio/')
+  ) {
     return;
   }
 

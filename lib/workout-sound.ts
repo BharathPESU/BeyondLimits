@@ -1,8 +1,10 @@
 // Sound and Text-to-Speech utilities for the Workout feature
+import { workoutMusicManager } from './workout-music-manager';
 
 class WorkoutSoundManager {
   private audioCtx: AudioContext | null = null;
   private isMuted: boolean = false;
+  private speechSafetyTimer: NodeJS.Timeout | null = null;
 
   public setMuted(muted: boolean) {
     this.isMuted = muted;
@@ -31,13 +33,22 @@ class WorkoutSoundManager {
     return this.audioCtx;
   }
 
-  public speak(text: string) {
+  public speak(text: string, onComplete?: () => void) {
     if (this.isMuted || typeof window === 'undefined' || !('speechSynthesis' in window)) {
+      onComplete?.();
       return;
     }
 
     try {
+      if (this.speechSafetyTimer) {
+        clearTimeout(this.speechSafetyTimer);
+        this.speechSafetyTimer = null;
+      }
+
       window.speechSynthesis.cancel();
+      // Temporarily pause background workout music while the coach speaks
+      workoutMusicManager.pauseForVoice();
+
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.rate = 1.0;
       utterance.pitch = 1.0;
@@ -53,9 +64,32 @@ class WorkoutSoundManager {
         utterance.voice = preferredVoice;
       }
 
+      let completed = false;
+      const finishSpeech = () => {
+        if (completed) return;
+        completed = true;
+        if (this.speechSafetyTimer) {
+          clearTimeout(this.speechSafetyTimer);
+          this.speechSafetyTimer = null;
+        }
+        // Seamlessly resume workout music continuation from where it was paused
+        workoutMusicManager.resumeAfterVoice();
+        onComplete?.();
+      };
+
+      utterance.onend = finishSpeech;
+      utterance.onerror = finishSpeech;
+
+      // Safety timeout: estimated duration based on word count + safety buffer
+      const wordCount = text.split(/\s+/).filter(Boolean).length;
+      const estimatedMs = Math.max(3000, Math.min(15000, (wordCount / 2.2) * 1000 + 1500));
+      this.speechSafetyTimer = setTimeout(finishSpeech, estimatedMs);
+
       window.speechSynthesis.speak(utterance);
     } catch {
       // Graceful fallback if speech synthesis throws or is blocked
+      workoutMusicManager.resumeAfterVoice();
+      onComplete?.();
     }
   }
 
@@ -118,9 +152,14 @@ class WorkoutSoundManager {
   }
 
   public stopAll() {
+    if (this.speechSafetyTimer) {
+      clearTimeout(this.speechSafetyTimer);
+      this.speechSafetyTimer = null;
+    }
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel();
     }
+    workoutMusicManager.resumeAfterVoice();
   }
 }
 

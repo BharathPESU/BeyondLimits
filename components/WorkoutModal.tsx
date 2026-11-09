@@ -22,9 +22,11 @@ import {
   Dumbbell,
   Maximize2,
   ArrowRight,
+  Music,
 } from 'lucide-react';
 import { WORKOUT_EXERCISES, WorkoutExercise } from '@/lib/workout-data';
 import { workoutSound } from '@/lib/workout-sound';
+import { workoutMusicManager, WORKOUT_TRACKS } from '@/lib/workout-music-manager';
 
 type WorkoutPhase = 'overview' | 'ready' | 'active' | 'rest' | 'completed';
 
@@ -46,10 +48,21 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
   const [restExtendedSeconds, setRestExtendedSeconds] = useState<number>(0);
   const [liveWorkoutStreak, setLiveWorkoutStreak] = useState<number | null>(null);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
+  const [isMusicEnabled, setIsMusicEnabled] = useState<boolean>(true);
+  const [musicState, setMusicState] = useState(workoutMusicManager.getState());
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const hasSpokenReadyRef = useRef<boolean>(false);
   const hasSpokenHalfwayRef = useRef<boolean>(false);
+
+  // Subscribe to background music manager
+  useEffect(() => {
+    const unsub = workoutMusicManager.subscribe((state) => {
+      setMusicState(state);
+      setIsMusicEnabled(state.isWorkoutMusicEnabled);
+    });
+    return unsub;
+  }, []);
 
   const currentExercise: WorkoutExercise = WORKOUT_EXERCISES[currentIndex] || WORKOUT_EXERCISES[0];
   const nextExercise: WorkoutExercise | null =
@@ -62,8 +75,16 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
     workoutSound.setMuted(nextMuted);
   };
 
+  // Toggle workout background music
+  const toggleWorkoutMusic = () => {
+    const next = workoutMusicManager.toggleWorkoutMusic();
+    setIsMusicEnabled(next);
+  };
+
   // Close and cleanup
   const handleClose = useCallback(() => {
+    workoutMusicManager.setWorkoutMusicEnabled(false);
+    workoutMusicManager.pause();
     workoutSound.stopAll();
     if (timerRef.current) clearInterval(timerRef.current);
     setPhase('overview');
@@ -84,6 +105,8 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
     setTotalSecondsElapsed(0);
     hasSpokenReadyRef.current = false;
     hasSpokenHalfwayRef.current = false;
+    workoutMusicManager.setPlaylist(WORKOUT_TRACKS, 0);
+    workoutMusicManager.setWorkoutMusicEnabled(true);
   }, []);
 
   // Move directly into the active exercise
@@ -106,13 +129,13 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
       setPhase('rest');
       setTimeLeft(30); // 30-second rest
       setIsPaused(false);
-      workoutSound.speak(`Rest time. Next up is ${upcoming.name}.`);
+      workoutSound.speak(`You have completed ${currentExercise.name}. Rest time. Next up is ${upcoming.name}.`);
     } else {
       setPhase('completed');
       workoutSound.playBeep('complete');
       workoutSound.speak('Congratulations! Workout completed. Great job on keeping your streak alive!');
     }
-  }, [currentIndex]);
+  }, [currentIndex, currentExercise]);
 
   // Skip rest and start next exercise
   const skipRest = useCallback(() => {
@@ -253,6 +276,22 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Turn On / Off Workout Music Button */}
+            <button
+              type="button"
+              onClick={toggleWorkoutMusic}
+              aria-label={isMusicEnabled ? 'Turn off workout music' : 'Turn on workout music'}
+              className={`min-h-[40px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl transition-all cursor-pointer border ${
+                isMusicEnabled
+                  ? 'bg-cyan-950 text-cyan-300 border-cyan-800 shadow-[0_0_12px_rgba(0,240,255,0.2)]'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 border-slate-200 bg-white'
+              }`}
+              title={isMusicEnabled ? 'Turn off workout music' : 'Turn on workout music'}
+            >
+              <Music className={`w-4 h-4 ${isMusicEnabled ? 'text-cyan-400' : 'text-slate-500'}`} />
+              <span className="hidden xs:inline">{isMusicEnabled ? 'Music: ON' : 'Turn on Music'}</span>
+            </button>
+
             {phase !== 'overview' && (
               <button
                 type="button"
@@ -611,7 +650,17 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
 
                   <button
                     type="button"
-                    onClick={() => setIsPaused((prev) => !prev)}
+                    onClick={() => {
+                      setIsPaused((prev) => {
+                        const next = !prev;
+                        if (next) {
+                          workoutMusicManager.pause();
+                        } else if (isMusicEnabled) {
+                          void workoutMusicManager.play();
+                        }
+                        return next;
+                      });
+                    }}
                     aria-label={isPaused ? 'Resume exercise timer' : 'Pause exercise timer'}
                     className="flex-1 min-h-[52px] py-3.5 px-6 rounded-2xl bg-teal-700 hover:bg-teal-800 text-white font-extrabold flex items-center justify-center gap-2 shadow-sm active:scale-98 transition-all cursor-pointer"
                   >
@@ -637,6 +686,60 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
                   >
                     <SkipForward className="w-5 h-5" />
                   </button>
+                </div>
+
+                {/* Workout Music Strip in Active Phase */}
+                <div className="w-full max-w-sm mx-auto bg-slate-900 text-white rounded-xl p-3 border border-cyan-900/50 flex items-center justify-between gap-3 shadow-sm">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="p-2 rounded-lg bg-cyan-950 text-cyan-400 border border-cyan-800/40 shrink-0">
+                      <Music className="w-4 h-4" />
+                    </div>
+                    <div className="text-left min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] uppercase font-bold tracking-wider text-cyan-400">
+                          {isMusicEnabled ? (musicState.isPlaying ? 'Workout Music' : 'Music Paused') : 'Music Off'}
+                        </span>
+                        {isMusicEnabled && musicState.isPlaying && (
+                          <div className="flex items-center gap-0.5 h-2.5">
+                            {[40, 80, 60, 100].map((h, i) => (
+                              <span
+                                key={i}
+                                className="w-0.5 bg-cyan-400 rounded-full animate-pulse"
+                                style={{ height: `${h}%`, animationDelay: `${i * 120}ms` }}
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <p className="text-xs font-semibold text-slate-200 truncate">
+                        {isMusicEnabled ? musicState.currentTrack.title : 'Tap to enable music'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1 shrink-0">
+                    {isMusicEnabled && (
+                      <button
+                        type="button"
+                        onClick={() => void workoutMusicManager.next()}
+                        className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-400 cursor-pointer"
+                        title="Next Track"
+                      >
+                        <SkipForward className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={toggleWorkoutMusic}
+                      className={`px-2.5 py-1 text-[11px] font-bold rounded-lg transition-all cursor-pointer ${
+                        isMusicEnabled
+                          ? 'bg-cyan-500 text-slate-950 shadow-[0_0_8px_rgba(0,240,255,0.3)]'
+                          : 'bg-slate-800 text-slate-300 hover:text-white'
+                      }`}
+                    >
+                      {isMusicEnabled ? 'ON' : 'OFF'}
+                    </button>
+                  </div>
                 </div>
 
                 <div className="flex items-center justify-between text-xs text-slate-500 pt-2 border-t border-slate-100">
@@ -741,6 +844,60 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
                     <span>Skip Rest</span>
                     <SkipForward className="w-4 h-4" />
                   </button>
+                </div>
+
+                {/* Workout Music Strip in Rest Phase */}
+                <div className="w-full bg-slate-900 text-white rounded-xl p-3 border border-cyan-900/50 flex items-center justify-between gap-3 shadow-sm">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="p-2 rounded-lg bg-cyan-950 text-cyan-400 border border-cyan-800/40 shrink-0">
+                      <Music className="w-4 h-4" />
+                    </div>
+                    <div className="text-left min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] uppercase font-bold tracking-wider text-cyan-400">
+                          {isMusicEnabled ? (musicState.isPlaying ? 'Music Playing' : 'Music Paused') : 'Music Off'}
+                        </span>
+                        {isMusicEnabled && musicState.isPlaying && (
+                          <div className="flex items-center gap-0.5 h-2.5">
+                            {[40, 80, 60, 100].map((h, i) => (
+                              <span
+                                key={i}
+                                className="w-0.5 bg-cyan-400 rounded-full animate-pulse"
+                                style={{ height: `${h}%`, animationDelay: `${i * 120}ms` }}
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <p className="text-xs font-semibold text-slate-200 truncate">
+                        {isMusicEnabled ? musicState.currentTrack.title : 'Tap to enable music'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1 shrink-0">
+                    {isMusicEnabled && (
+                      <button
+                        type="button"
+                        onClick={() => void workoutMusicManager.next()}
+                        className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-400 cursor-pointer"
+                        title="Next Track"
+                      >
+                        <SkipForward className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={toggleWorkoutMusic}
+                      className={`px-2.5 py-1 text-[11px] font-bold rounded-lg transition-all cursor-pointer ${
+                        isMusicEnabled
+                          ? 'bg-cyan-500 text-slate-950 shadow-[0_0_8px_rgba(0,240,255,0.3)]'
+                          : 'bg-slate-800 text-slate-300 hover:text-white'
+                      }`}
+                    >
+                      {isMusicEnabled ? 'ON' : 'OFF'}
+                    </button>
+                  </div>
                 </div>
 
                 <p className="text-[11px] text-slate-400">
