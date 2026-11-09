@@ -23,6 +23,7 @@ export default function SongsModal({
   onClose,
   onPauseBackgroundVoice,
 }: SongsModalProps) {
+  const [songs, setSongs] = useState<MotivationalSong[]>(MOTIVATIONAL_SONGS);
   const [selectedSong, setSelectedSong] = useState<MotivationalSong>(
     MOTIVATIONAL_SONGS[0]
   );
@@ -33,6 +34,26 @@ export default function SongsModal({
   const [resolving, setResolving] = useState<boolean>(false);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const keepAliveAudioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Fetch updated motivational songs from admin sync API on mount
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/songs')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: MotivationalSong[] | null) => {
+        if (!cancelled && data && Array.isArray(data) && data.length > 0) {
+          setSongs(data);
+          setSelectedSong((prev) => {
+            const match = data.find((s) => s.id === prev.id);
+            return match || data[0];
+          });
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Pause dashboard assistant voice when music modal opens
   useEffect(() => {
@@ -75,20 +96,24 @@ export default function SongsModal({
     };
   }, [selectedSong, isOpen]);
 
-  const currentIdx = MOTIVATIONAL_SONGS.findIndex(
+  const currentIdx = songs.findIndex(
     (s) => s.id === selectedSong.id
   );
 
   const handlePrevSong = useCallback(() => {
+    if (songs.length === 0) return;
+    const safeIdx = currentIdx >= 0 ? currentIdx : 0;
     const prevIdx =
-      (currentIdx - 1 + MOTIVATIONAL_SONGS.length) % MOTIVATIONAL_SONGS.length;
-    setSelectedSong(MOTIVATIONAL_SONGS[prevIdx]);
-  }, [currentIdx]);
+      (safeIdx - 1 + songs.length) % songs.length;
+    setSelectedSong(songs[prevIdx]);
+  }, [currentIdx, songs]);
 
   const handleNextSong = useCallback(() => {
-    const nextIdx = (currentIdx + 1) % MOTIVATIONAL_SONGS.length;
-    setSelectedSong(MOTIVATIONAL_SONGS[nextIdx]);
-  }, [currentIdx]);
+    if (songs.length === 0) return;
+    const safeIdx = currentIdx >= 0 ? currentIdx : 0;
+    const nextIdx = (safeIdx + 1) % songs.length;
+    setSelectedSong(songs[nextIdx]);
+  }, [currentIdx, songs]);
 
   const handleSwitchStream = () => {
     setStreamIndex((prev) => (prev + 1) % Math.max(1, videoIds.length));
@@ -290,10 +315,10 @@ export default function SongsModal({
             </div>
           </div>
 
-          {/* Right 5 Cols: Scrollable List of 15 Songs */}
+          {/* Right 5 Cols: Scrollable List of Songs */}
           <div className="lg:col-span-5 bg-white border border-slate-200 rounded-2xl overflow-hidden flex flex-col max-h-[65vh]">
             <div className="overflow-y-auto divide-y divide-slate-100">
-              {MOTIVATIONAL_SONGS.map((song) => {
+              {songs.map((song) => {
                 const isCurrent = song.id === selectedSong.id;
                 return (
                   <button

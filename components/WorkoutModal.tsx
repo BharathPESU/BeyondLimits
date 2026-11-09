@@ -26,7 +26,12 @@ import {
   ArrowRight,
   Music,
 } from 'lucide-react';
-import { WORKOUT_EXERCISES, WorkoutExercise } from '@/lib/workout-data';
+import {
+  WORKOUT_EXERCISES,
+  WorkoutExercise,
+  WorkoutRoutine,
+  DEFAULT_WORKOUT_ROUTINES,
+} from '@/lib/workout-data';
 import { workoutSound } from '@/lib/workout-sound';
 import { MOTIVATIONAL_SONGS, MotivationalSong } from '@/lib/motivation-media-data';
 
@@ -39,6 +44,9 @@ interface WorkoutModalProps {
 
 export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
   const [phase, setPhase] = useState<WorkoutPhase>('overview');
+  const [routines, setRoutines] = useState<WorkoutRoutine[]>(DEFAULT_WORKOUT_ROUTINES);
+  const [selectedRoutineId, setSelectedRoutineId] = useState<string>('full_body_routine');
+  const [workoutSongs, setWorkoutSongs] = useState<MotivationalSong[]>(MOTIVATIONAL_SONGS);
   const [currentIndex, setCurrentIndex] = useState<number>(0);
   const [timeLeft, setTimeLeft] = useState<number>(60);
   const [isPaused, setIsPaused] = useState<boolean>(false);
@@ -62,13 +70,46 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
   const hasSpokenReadyRef = useRef<boolean>(false);
   const hasSpokenHalfwayRef = useRef<boolean>(false);
 
+  // Sync routines and songs from admin API
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/workout/routines')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: WorkoutRoutine[] | null) => {
+        if (!cancelled && data && Array.isArray(data) && data.length > 0) {
+          setRoutines(data);
+        }
+      })
+      .catch(() => {});
+
+    fetch('/api/songs')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: MotivationalSong[] | null) => {
+        if (!cancelled && data && Array.isArray(data) && data.length > 0) {
+          setWorkoutSongs(data);
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const activeRoutine =
+    routines.find((r) => r.id === selectedRoutineId) || routines[0] || DEFAULT_WORKOUT_ROUTINES[0];
+  const activeExercises =
+    activeRoutine?.exercises && activeRoutine.exercises.length > 0
+      ? activeRoutine.exercises
+      : WORKOUT_EXERCISES;
+
   const currentWorkoutSong: MotivationalSong =
-    MOTIVATIONAL_SONGS[workoutSongIndex % MOTIVATIONAL_SONGS.length];
+    workoutSongs[workoutSongIndex % workoutSongs.length] || MOTIVATIONAL_SONGS[0];
   const workoutVideoId = currentWorkoutSong.defaultVideoIds[0];
 
-  const currentExercise: WorkoutExercise = WORKOUT_EXERCISES[currentIndex] || WORKOUT_EXERCISES[0];
+  const currentExercise: WorkoutExercise = activeExercises[currentIndex] || activeExercises[0];
   const nextExercise: WorkoutExercise | null =
-    currentIndex + 1 < WORKOUT_EXERCISES.length ? WORKOUT_EXERCISES[currentIndex + 1] : null;
+    currentIndex + 1 < activeExercises.length ? activeExercises[currentIndex + 1] : null;
 
   // PostMessage helper to control YouTube iframe playback
   const sendIframeCommand = useCallback((func: string, args: unknown[] = []) => {
@@ -96,9 +137,9 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
   }, [sendIframeCommand]);
 
   const nextWorkoutSong = useCallback(() => {
-    setWorkoutSongIndex((prev) => (prev + 1) % MOTIVATIONAL_SONGS.length);
+    setWorkoutSongIndex((prev) => (prev + 1) % workoutSongs.length);
     setIsMusicPlaying(true);
-  }, []);
+  }, [workoutSongs.length]);
 
   const toggleWorkoutMusic = () => {
     setIsMusicEnabled((prev) => {
@@ -168,7 +209,7 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
   // Move directly into the active exercise
   const beginExercise = useCallback((index: number) => {
     setCurrentIndex(index);
-    const exercise = WORKOUT_EXERCISES[index];
+    const exercise = activeExercises[index] || activeExercises[0];
     setTimeLeft(exercise.durationSeconds);
     setPhase('active');
     setIsPaused(false);
@@ -183,20 +224,20 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
     if (isMusicEnabled && !isPaused) {
       playWorkoutMusic();
     }
-  }, [isMusicEnabled, isPaused, playWorkoutMusic]);
+  }, [activeExercises, isMusicEnabled, isPaused, playWorkoutMusic]);
 
   // Complete an active exercise and transition to rest or complete
   const handleExerciseComplete = useCallback(() => {
     workoutSound.playBeep('rest');
     pauseWorkoutMusic();
 
-    if (currentIndex + 1 < WORKOUT_EXERCISES.length) {
+    if (currentIndex + 1 < activeExercises.length) {
       setPhase('rest');
       setTimeLeft(30); // 30-second rest
       setIsPaused(false);
 
       // Play the custom Morgan ElevenLabs motivational voice for the completed exercise:
-      const voiceUrl = currentExercise.voiceClipUrl || `/voice/exercise_complete_${currentIndex + 1}.mp3`;
+      const voiceUrl = currentExercise.voiceClipUrl || `/voice/exercise_complete_${Math.min(currentIndex + 1, 12)}.mp3`;
       workoutSound.playAudioClip(voiceUrl, () => {
         // When motivational voice concludes, resume the workout music for the rest period
         if (isMusicEnabled) {
@@ -208,13 +249,13 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
       pauseWorkoutMusic();
       workoutSound.playBeep('complete');
 
-      // Final exercise voice clip (Exercise 12 / Bear crawl completion)
+      // Final exercise voice clip
       const finalVoiceUrl = currentExercise.voiceClipUrl || `/voice/exercise_complete_12.mp3`;
       workoutSound.playAudioClip(finalVoiceUrl, () => {
         workoutSound.speak('Congratulations! Workout completed. Great job on keeping your streak alive!');
       });
     }
-  }, [currentIndex, currentExercise, isMusicEnabled, pauseWorkoutMusic, playWorkoutMusic]);
+  }, [currentIndex, currentExercise, activeExercises.length, isMusicEnabled, pauseWorkoutMusic, playWorkoutMusic]);
 
   // Autoplay next YouTube motivational song in order when current video finishes (info === 0)
   useEffect(() => {
@@ -374,12 +415,12 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
                 </h2>
                 {phase !== 'overview' && phase !== 'completed' && (
                   <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-teal-50 text-teal-700 border border-teal-200">
-                    Step {currentIndex + 1} of {WORKOUT_EXERCISES.length}
+                    Step {currentIndex + 1} of {activeExercises.length}
                   </span>
                 )}
               </div>
               <p className="text-xs text-slate-500 hidden sm:block">
-                12 Exercises · 1 min each · 30s rest
+                {activeRoutine?.name || 'Workout'} · {activeExercises.length} Exercises · 1 min each · 30s rest
               </p>
             </div>
           </div>
@@ -440,32 +481,65 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
       {phase === 'overview' && (
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
           <div className="max-w-6xl w-full mx-auto space-y-6">
+            {/* Multi-Routine Selector Tabs */}
+            {routines.length > 1 && (
+              <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+                {routines.map((routine) => {
+                  const isSelected = routine.id === selectedRoutineId;
+                  return (
+                    <button
+                      key={routine.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedRoutineId(routine.id);
+                        setCurrentIndex(0);
+                      }}
+                      className={`min-h-[40px] px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition-all cursor-pointer border flex items-center gap-2 ${
+                        isSelected
+                          ? 'bg-teal-700 text-white border-teal-700 shadow-sm'
+                          : 'bg-white text-slate-700 hover:text-slate-900 hover:bg-slate-50 border-slate-200'
+                      }`}
+                    >
+                      <span>{routine.badge || routine.name}</span>
+                      <span
+                        className={`px-1.5 py-0.5 rounded-md text-[10px] font-mono font-bold ${
+                          isSelected ? 'bg-teal-800 text-teal-100' : 'bg-slate-100 text-slate-600'
+                        }`}
+                      >
+                        {routine.exercises?.length || 0}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
             {/* Hero Card */}
             <div className="bg-white border border-slate-200 rounded-2xl sm:rounded-3xl p-5 sm:p-8 shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-6">
               <div className="space-y-3 max-w-2xl">
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-50 border border-teal-200 text-teal-800 text-xs font-semibold">
                   <Flame className="w-4 h-4 text-teal-700" />
-                  Full Body Home Workout
+                  {activeRoutine?.badge || 'Home Workout'}
                 </div>
 
                 <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-                  Daily Discipline Workout
+                  {activeRoutine?.name || 'Daily Discipline Workout'}
                 </h1>
 
                 <p className="text-slate-600 text-sm sm:text-base leading-relaxed">
-                  Complete all 12 exercises in order with guided audio voice coaching, animated timers, and form
-                  instructions. 1 minute per exercise with 30-second rest intervals.
+                  {activeRoutine?.description ||
+                    'Complete exercises in order with guided audio voice coaching, animated timers, and form instructions.'}
                 </p>
 
                 <div className="flex flex-wrap items-center gap-3 pt-1">
                   <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 text-slate-700 text-xs font-semibold">
                     <Clock className="w-4 h-4 text-teal-700" />
-                    <span>~18 Mins Total</span>
+                    <span>~{Math.round(activeExercises.length * 1.5)} Mins Total</span>
                   </div>
 
                   <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 text-slate-700 text-xs font-semibold">
                     <Sparkles className="w-4 h-4 text-amber-600" />
-                    <span>12 Exercises (1 min each)</span>
+                    <span>{activeExercises.length} Exercises (1 min each)</span>
                   </div>
 
                   <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 text-slate-700 text-xs font-semibold">
@@ -492,13 +566,13 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
-                  Exercise Routine (12 Steps)
+                  Exercise Routine ({activeExercises.length} Steps)
                 </h3>
                 <span className="text-xs font-medium text-slate-500">Tap any exercise to preview</span>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
-                {WORKOUT_EXERCISES.map((exercise, idx) => (
+                {activeExercises.map((exercise, idx) => (
                   <div
                     key={exercise.id}
                     onClick={() => beginExercise(idx)}
@@ -665,7 +739,7 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
             <div className="lg:col-span-7 bg-white border border-slate-200 rounded-2xl sm:rounded-3xl p-3 sm:p-5 shadow-sm flex flex-col justify-between relative min-h-[300px] sm:min-h-[440px] lg:min-h-[520px]">
               <div className="flex items-center justify-between z-10 mb-2">
                 <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-slate-900 text-white">
-                  Exercise {currentIndex + 1} of {WORKOUT_EXERCISES.length}
+                  Exercise {currentIndex + 1} of {activeExercises.length}
                 </span>
 
                 <div className="flex items-center gap-2">
@@ -818,7 +892,7 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
               <div className="lg:col-span-7 bg-white border border-slate-200 rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-sm flex flex-col justify-between relative min-h-[300px] sm:min-h-[420px] lg:min-h-[480px]">
                 <div className="flex items-center justify-between z-10 mb-2">
                   <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-teal-50 text-teal-800 border border-teal-200">
-                    NEXT #{currentIndex + 2} OF {WORKOUT_EXERCISES.length}
+                    NEXT #{currentIndex + 2} OF {activeExercises.length}
                   </span>
 
                   <button
@@ -1159,7 +1233,7 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
               <div className="py-2 flex items-center justify-between text-[11px] text-slate-500">
                 <span className="truncate">{currentWorkoutSong.artist}</span>
                 <span className="shrink-0 font-medium text-slate-400">
-                  {workoutSongIndex + 1} / {MOTIVATIONAL_SONGS.length}
+                  {workoutSongIndex + 1} / {workoutSongs.length}
                 </span>
               </div>
 

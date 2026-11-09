@@ -5,6 +5,9 @@ export interface MotivationalSong {
   searchQuery: string;
   fallbackQuery: string;
   defaultVideoIds: string[];
+  category?: string;
+  energyLevel?: string;
+  quote?: string;
 }
 
 export interface MotivationalShort {
