@@ -46,6 +46,7 @@ import MotivationalChatModal from './MotivationalChatModal';
 import WorkoutModal from './WorkoutModal';
 import PWAInstallButton from './PWAInstallButton';
 import VoiceFireCanvas, { VoiceAudioTelemetry } from './VoiceFireCanvas';
+import JarvisArcReactorCanvas from './JarvisArcReactorCanvas';
 
 interface DisciplineDashboardClientProps {
   initialData: DashboardPayload;
@@ -575,10 +576,10 @@ export default function DisciplineDashboardClient({
             <PWAInstallButton />
           </div>
         </header>
-        {/* 1. DAILY MOTIVATION + THREE.JS FIRE & VOICE-REACTIVE PARTICLE STAGE */}
+        {/* 1. DAILY MOTIVATION + THREE.JS JARVIS ARC REACTOR STAGE */}
         <section className="bg-slate-900 text-white rounded-2xl p-5 sm:p-6 border border-slate-800 space-y-5">
-          {/* Three.js Opening Fire & Voice-Synced Particle Stage */}
-          <VoiceFireCanvas
+          {/* Three.js Iron Man JARVIS Arc Reactor Stage */}
+          <JarvisArcReactorCanvas
             telemetryRef={telemetryRef}
             isSpeaking={isSpeaking}
             onReplayVoice={() => void speakMotivation(motivation, false)}
