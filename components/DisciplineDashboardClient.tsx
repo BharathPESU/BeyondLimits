@@ -27,6 +27,8 @@ import {
   Newspaper,
   MessageSquare,
   Dumbbell,
+  User,
+  Settings,
 } from 'lucide-react';
 import { SignInButton, SignUpButton, Show, UserButton } from '@clerk/nextjs';
 import {
@@ -44,6 +46,8 @@ import MotivationHubModal from './MotivationHubModal';
 import NewsModal from './NewsModal';
 import MotivationalChatModal from './MotivationalChatModal';
 import WorkoutModal from './WorkoutModal';
+import UserProfileModal from './UserProfileModal';
+import UserSettingsModal from './UserSettingsModal';
 import PWAInstallButton from './PWAInstallButton';
 import VoiceFireCanvas, { VoiceAudioTelemetry } from './VoiceFireCanvas';
 import JarvisArcReactorCanvas from './JarvisArcReactorCanvas';
@@ -66,6 +70,8 @@ export default function DisciplineDashboardClient({
   const [isNewsOpen, setIsNewsOpen] = useState<boolean>(false);
   const [isChatOpen, setIsChatOpen] = useState<boolean>(false);
   const [isWorkoutOpen, setIsWorkoutOpen] = useState<boolean>(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState<boolean>(false);
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState<boolean>(false);
 
   // Daily 7:00 AM AI & Tech News state
   const [newsRecord, setNewsRecord] = useState<DailyTechNewsRecord | null>(
@@ -565,13 +571,48 @@ export default function DisciplineDashboardClient({
               </SignUpButton>
             </Show>
             <Show when="signed-in">
-              <UserButton
-                appearance={{
-                  elements: {
-                    userButtonAvatarBox: 'w-8 h-8 sm:w-9 sm:h-9 ring-2 ring-teal-600/30',
-                  },
-                }}
-              />
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsProfileModalOpen(true)}
+                  className="p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-teal-700 border border-slate-200 transition-all cursor-pointer flex items-center gap-1 text-xs font-semibold"
+                  title="My Profile (Name, Age, DOB, Blood Group, Height, Place)"
+                  aria-label="Open User Profile"
+                >
+                  <User className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-teal-600" />
+                  <span className="hidden md:inline">Profile</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsSettingsModalOpen(true)}
+                  className="p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-cyan-700 border border-slate-200 transition-all cursor-pointer flex items-center gap-1 text-xs font-semibold"
+                  title="AI & Gemini Settings (Configure custom API key)"
+                  aria-label="Open AI Settings"
+                >
+                  <Settings className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-cyan-600" />
+                  <span className="hidden md:inline">AI Key</span>
+                </button>
+                <UserButton
+                  appearance={{
+                    elements: {
+                      userButtonAvatarBox: 'w-8 h-8 sm:w-9 sm:h-9 ring-2 ring-teal-600/30 hover:ring-teal-500 transition-all',
+                    },
+                  }}
+                >
+                  <UserButton.MenuItems>
+                    <UserButton.Action
+                      label="My Profile"
+                      labelIcon={<User className="w-4 h-4 text-teal-500" />}
+                      onClick={() => setIsProfileModalOpen(true)}
+                    />
+                    <UserButton.Action
+                      label="AI & Gemini Settings"
+                      labelIcon={<Settings className="w-4 h-4 text-cyan-500" />}
+                      onClick={() => setIsSettingsModalOpen(true)}
+                    />
+                  </UserButton.MenuItems>
+                </UserButton>
+              </div>
             </Show>
             <PWAInstallButton />
           </div>
@@ -1096,6 +1137,26 @@ export default function DisciplineDashboardClient({
       <WorkoutModal
         isOpen={isWorkoutOpen}
         onClose={() => setIsWorkoutOpen(false)}
+      />
+
+      {/* User Profile Modal (Name, Age, DOB, Blood Group, Height, Place) */}
+      <UserProfileModal
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
+        onOpenSettings={() => {
+          setIsProfileModalOpen(false);
+          setIsSettingsModalOpen(true);
+        }}
+      />
+
+      {/* User Settings Modal (Custom Gemini API Key + Google AI Studio link + Fallback) */}
+      <UserSettingsModal
+        isOpen={isSettingsModalOpen}
+        onClose={() => setIsSettingsModalOpen(false)}
+        onOpenProfile={() => {
+          setIsSettingsModalOpen(false);
+          setIsProfileModalOpen(true);
+        }}
       />
     </div>
   );

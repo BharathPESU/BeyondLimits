@@ -62,18 +62,12 @@ export async function POST(request: NextRequest) {
     }
 
     const { message, history } = parsed.data;
-    const geminiKey = process.env.GEMINI_API_KEY?.trim();
-
-    if (!geminiKey || geminiKey === 'MY_GEMINI_API_KEY') {
-      const fallbackReply = enforceMax500Chars(
-        `Stay locked in, brother! Regarding "${message.slice(0, 60)}": discipline is forged when you conquer every impulse and put 100% of your energy into building your future. Master your mind today, keep your streak clean, and never settle for weakness.`
-      );
-      return NextResponse.json({
-        reply: fallbackReply,
-        charCount: fallbackReply.length,
-        systemPrompt: MOTIVATIONAL_COACH_SYSTEM_PROMPT,
-      });
-    }
+    const userApiKey =
+      request.headers.get('x-gemini-api-key')?.trim() ||
+      (typeof body === 'object' && body !== null && 'userApiKey' in body
+        ? String(body.userApiKey).trim()
+        : '');
+    const serverApiKey = process.env.GEMINI_API_KEY?.trim();
 
     const dashboard = getDashboardPayload();
     const cdStats = dashboard.stats.bharath_cd;
@@ -93,48 +87,86 @@ ${recentHistoryText ? `Recent Conversation:\n${recentHistoryText}\n\n` : ''}User
 
 Respond directly to the user's question while motivating them fiercely to stay disciplined, focused, and relentless. Remember: strictly under 480 characters total, plain spoken text only.`;
 
-    const ai = new GoogleGenAI({
-      apiKey: geminiKey,
-      httpOptions: {
-        headers: {
-          'User-Agent': 'aistudio-build',
+    const generateWithKey = async (key: string): Promise<string> => {
+      const ai = new GoogleGenAI({
+        apiKey: key,
+        httpOptions: {
+          headers: {
+            'User-Agent': 'beyondlimits-chat',
+          },
         },
-      },
-    });
+      });
+
+      try {
+        const response = await ai.models.generateContent({
+          model: 'gemini-2.5-flash',
+          contents: prompt,
+          config: {
+            systemInstruction: MOTIVATIONAL_COACH_SYSTEM_PROMPT,
+            temperature: 0.75,
+          },
+        });
+        return response.text || '';
+      } catch {
+        const response = await ai.models.generateContent({
+          model: 'gemini-2.0-flash',
+          contents: prompt,
+          config: {
+            systemInstruction: MOTIVATIONAL_COACH_SYSTEM_PROMPT,
+            temperature: 0.75,
+          },
+        });
+        return response.text || '';
+      }
+    };
 
     let rawReply = '';
-    try {
-      const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: prompt,
-        config: {
-          systemInstruction: MOTIVATIONAL_COACH_SYSTEM_PROMPT,
-          temperature: 0.75,
-        },
-      });
-      rawReply = response.text || '';
-    } catch {
-      const response = await ai.models.generateContent({
-        model: 'gemini-3.8-flash',
-        contents: prompt,
-        config: {
-          systemInstruction: MOTIVATIONAL_COACH_SYSTEM_PROMPT,
-          temperature: 0.75,
-        },
-      });
-      rawReply = response.text || '';
+    let keyProvider: 'user-gemini-key' | 'server-gemini-key' | 'deterministic-fallback' =
+      'deterministic-fallback';
+
+    // Step 1: Attempt user's custom Gemini API key if provided
+    if (userApiKey && userApiKey.startsWith('AIzaSy')) {
+      try {
+        rawReply = await generateWithKey(userApiKey);
+        if (rawReply) {
+          keyProvider = 'user-gemini-key';
+        }
+      } catch (err) {
+        console.warn(
+          'User Gemini API key failed, automatically falling back to Vercel hosted key:',
+          err instanceof Error ? err.message : err
+        );
+      }
     }
 
-    const finalReply = enforceMax500Chars(
-      rawReply ||
-        'Every question is a step toward mastery. Guard your energy, reject cheap dopamine, and attack your goals with relentless discipline today!'
-    );
+    // Step 2: Fallback to server-hosted Gemini API key on Vercel
+    if (!rawReply && serverApiKey && serverApiKey !== 'MY_GEMINI_API_KEY') {
+      try {
+        rawReply = await generateWithKey(serverApiKey);
+        if (rawReply) {
+          keyProvider = 'server-gemini-key';
+        }
+      } catch (err) {
+        console.warn('Server Gemini API key failed:', err);
+      }
+    }
+
+    // Step 3: Deterministic high-impact fallback if both keys are unavailable or fail
+    if (!rawReply) {
+      rawReply = enforceMax500Chars(
+        `Stay locked in, brother! Regarding "${message.slice(0, 60)}": discipline is forged when you conquer every impulse and put 100% of your energy into building your future. Master your mind today, keep your streak clean, and never settle for weakness.`
+      );
+      keyProvider = 'deterministic-fallback';
+    }
+
+    const finalReply = enforceMax500Chars(rawReply);
 
     return NextResponse.json(
       {
         reply: finalReply,
         charCount: finalReply.length,
         systemPrompt: MOTIVATIONAL_COACH_SYSTEM_PROMPT,
+        provider: keyProvider,
       },
       { status: 200 }
     );

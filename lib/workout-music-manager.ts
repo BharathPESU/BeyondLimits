@@ -415,3 +415,4 @@ class WorkoutMusicManager {
 }
 
 export const workoutMusicManager = new WorkoutMusicManager();
+

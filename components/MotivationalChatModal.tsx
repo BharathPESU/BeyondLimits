@@ -121,12 +121,21 @@ export default function MotivationalChatModal({
           content: m.content,
         }));
 
+        const userCustomKey =
+          typeof window !== 'undefined'
+            ? localStorage.getItem('beyondlimits_gemini_api_key') || ''
+            : '';
+
         const res = await fetch('/api/chat', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            ...(userCustomKey ? { 'x-gemini-api-key': userCustomKey } : {}),
+          },
           body: JSON.stringify({
             message: trimmed,
             history: historyPayload,
+            userApiKey: userCustomKey,
           }),
         });
 
