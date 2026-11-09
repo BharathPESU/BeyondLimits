@@ -46,16 +46,33 @@ export default function JarvisArcReactorCanvas({
     })();
 
     const width = container.clientWidth || 800;
-    const height = container.clientHeight || 360;
+    const height = container.clientHeight || 420;
 
     // 2. Three.js Scene, Camera & Renderer
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x060913); // Deep cybernetic void
-    scene.fog = new THREE.FogExp2(0x060913, 0.04);
+    scene.fog = new THREE.FogExp2(0x060913, 0.035);
 
-    const camera = new THREE.PerspectiveCamera(42, width / height, 0.1, 100);
-    camera.position.set(0, 0, 5.8);
-    camera.lookAt(0, 0, 0);
+    const camera = new THREE.PerspectiveCamera(40, width / height, 0.1, 100);
+
+    // Responsive camera auto-framing: calculates distance so the entire reactor & expanding rings fit completely
+    const updateCameraFraming = (cam: THREE.PerspectiveCamera, w: number, h: number) => {
+      const aspect = w / h;
+      cam.aspect = aspect;
+      const fov = 40;
+      cam.fov = fov;
+      const tanHalfFov = Math.tan(((fov / 2) * Math.PI) / 180);
+      // Maximum bounding radius of masterStage (3.6 radius * 0.70 scale)
+      const maxEffectiveRadius = 3.65 * 0.70; // ~2.55
+      const zVert = maxEffectiveRadius / tanHalfFov;
+      const zHoriz = maxEffectiveRadius / (tanHalfFov * aspect);
+      // Generous 16% safety padding ensures outer rings never clip on any screen ratio
+      cam.position.set(0, 0, Math.max(zVert, zHoriz) * 1.16);
+      cam.lookAt(0, 0, 0);
+      cam.updateProjectionMatrix();
+    };
+
+    updateCameraFraming(camera, width, height);
 
     const renderer = new THREE.WebGLRenderer({
       antialias: !isSoftwareGl,
@@ -80,26 +97,26 @@ export default function JarvisArcReactorCanvas({
     pmremGenerator.dispose();
 
     // 4. Studio Lighting Rig
-    const ambientLight = new THREE.AmbientLight(0x0d1b2a, 0.85);
+    const ambientLight = new THREE.AmbientLight(0x0d1b2a, 0.9);
     scene.add(ambientLight);
 
     // Primary Electric Cyan Reactor Glow Light
-    const corePointLight = new THREE.PointLight(0x00f0ff, 4.5, 14, 1.4);
+    const corePointLight = new THREE.PointLight(0x00f0ff, 4.5, 16, 1.4);
     corePointLight.position.set(0, 0, 0.4);
     scene.add(corePointLight);
 
     // Secondary White-Hot Arc Core Light
-    const coreWhiteLight = new THREE.PointLight(0xe0f7fa, 3.0, 8, 1.8);
+    const coreWhiteLight = new THREE.PointLight(0xe0f7fa, 3.0, 9, 1.8);
     coreWhiteLight.position.set(0, -0.1, 0.6);
     scene.add(coreWhiteLight);
 
     // Armor Rim Light (Burgundy / Dark Crimson Accent)
-    const armorRimLight = new THREE.DirectionalLight(0xb91c1c, 0.9);
+    const armorRimLight = new THREE.DirectionalLight(0xb91c1c, 0.95);
     armorRimLight.position.set(4, 3, -2);
     scene.add(armorRimLight);
 
     // Key Specular Light (Top-Left Highlight)
-    const keyLight = new THREE.DirectionalLight(0xffffff, 1.3);
+    const keyLight = new THREE.DirectionalLight(0xffffff, 1.35);
     keyLight.position.set(-3, 4, 4);
     scene.add(keyLight);
 
@@ -107,6 +124,8 @@ export default function JarvisArcReactorCanvas({
     // ROOT HIERARCHY GROUPS
     // =========================================================================
     const masterStage = new THREE.Group();
+    // Scaled to 0.70 so the entire assembly with expanding rings fits comfortably within the card frame
+    masterStage.scale.set(0.70, 0.70, 0.70);
     scene.add(masterStage);
 
     // Group for the central Arc Reactor circle that bumps inside/outside with voice
@@ -187,7 +206,6 @@ export default function JarvisArcReactorCanvas({
     for (let i = 0; i < FIN_COUNT; i++) {
       const angle = (i * Math.PI * 2) / FIN_COUNT;
       const finMesh = new THREE.Mesh(finGeo, finMat);
-      // Position along the outer circular ring radius
       const r = 1.64;
       finMesh.position.set(Math.cos(angle) * r, Math.sin(angle) * r, 0);
       finMesh.rotation.z = angle + Math.PI / 2;
@@ -200,16 +218,12 @@ export default function JarvisArcReactorCanvas({
     const triangleFrameGroup = new THREE.Group();
     reactorCoreGroup.add(triangleFrameGroup);
 
-    // Helper function to create an inverted equilateral triangle Shape
     function createInvertedTriangleShape(radius: number): THREE.Shape {
       const shape = new THREE.Shape();
       const r = radius;
-      // Inverted: Flat horizontal edge on top, single apex pointing straight down
-      // Top-Left vertex: 150 deg (5*pi/6)
+      // Inverted: Flat edge on top, single apex pointing down
       const p1 = new THREE.Vector2(-r * (Math.sqrt(3) / 2), r * 0.5);
-      // Top-Right vertex: 30 deg (pi/6)
       const p2 = new THREE.Vector2(r * (Math.sqrt(3) / 2), r * 0.5);
-      // Bottom Tip vertex: 270 deg (-pi/2)
       const p3 = new THREE.Vector2(0, -r);
 
       shape.moveTo(p1.x, p1.y);
@@ -352,7 +366,6 @@ export default function JarvisArcReactorCanvas({
           vUv = uv;
           vNormal = normalize(normalMatrix * normal);
           vec3 pos = position;
-          // Quantum pulse expansion
           pos *= 1.0 + uVoiceLevel * 0.22;
           gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
         }
@@ -365,7 +378,6 @@ export default function JarvisArcReactorCanvas({
         varying vec3 vNormal;
 
         void main() {
-          // Dynamic gradient from super-hot center to radiant cyan edge
           vec3 whiteHot = vec3(1.0, 1.0, 1.0);
           vec3 radiantCyan = vec3(0.0, 0.94, 1.0);
           vec3 deepPlasma = vec3(0.05, 0.45, 0.95);
@@ -391,10 +403,6 @@ export default function JarvisArcReactorCanvas({
     // =========================================================================
     // 8. MULTIPLE OUTER HOLOGRAPHIC JARVIS RINGS (Expand with voice & rotate)
     // =========================================================================
-    // The user explicitly requested:
-    // "outer multiple rings rotating with the animation.
-    //  when the agent talks with voice: rings expanding of that circle.
-    //  and the circle of logo bumping inside and outside."
 
     // Ring 1: Segmented Outer HUD Arc Ring (Radius 2.52)
     const ring1Geo = new THREE.RingGeometry(2.48, 2.54, 72, 1, 0, Math.PI * 1.85);
@@ -537,7 +545,7 @@ export default function JarvisArcReactorCanvas({
 
     const particleMat = new THREE.PointsMaterial({
       color: 0x38bdf8,
-      size: isSoftwareGl ? 0.03 : 0.05,
+      size: isSoftwareGl ? 0.03 : 0.045,
       transparent: true,
       opacity: 0.85,
       blending: THREE.AdditiveBlending,
@@ -557,8 +565,8 @@ export default function JarvisArcReactorCanvas({
       const rect = container.getBoundingClientRect();
       const nx = ((e.clientX - rect.left) / rect.width) * 2 - 1;
       const ny = -(((e.clientY - rect.top) / rect.height) * 2 - 1);
-      mouse.targetX = nx * 0.32; // Max ~18 degrees tilt
-      mouse.targetY = ny * 0.28;
+      mouse.targetX = nx * 0.28; // Subtle ~16 degrees tilt
+      mouse.targetY = ny * 0.24;
     };
 
     const onPointerLeave = () => {
@@ -567,7 +575,6 @@ export default function JarvisArcReactorCanvas({
     };
 
     const onClickCanvas = () => {
-      // Trigger a shockwave discharge and replay briefing
       shockwaveProgress = 0.01;
       onReplayVoice();
     };
@@ -588,7 +595,7 @@ export default function JarvisArcReactorCanvas({
       const delta = Math.min(clock.getDelta(), 0.1);
       const time = clock.getElapsedTime();
 
-      // Read real-time voice telemetry from shared mutable ref (0 re-renders)
+      // Read real-time voice telemetry from shared mutable ref
       const telemetry = telemetryRef.current;
       const voiceLevel = telemetry.level || 0;
       const voiceBass = telemetry.bass || 0;
@@ -605,73 +612,71 @@ export default function JarvisArcReactorCanvas({
       // -----------------------------------------------------------------------
       // A. ROTATING HOLOGRAPHIC OUTER RINGS (Alternate speeds & directions)
       // -----------------------------------------------------------------------
-      const speedMult = speaking ? 1.0 + voiceLevel * 1.5 : 1.0;
-      hudRing1.rotation.z += delta * 0.35 * speedMult;
-      tickGroup.rotation.z -= delta * 0.22 * speedMult;
-      ring3Group.rotation.z += delta * 0.45 * speedMult;
-      ring5Mesh.rotation.z -= delta * 0.18 * speedMult;
+      const speedMult = speaking ? 1.0 + voiceLevel * 1.4 : 1.0;
+      hudRing1.rotation.z += delta * 0.32 * speedMult;
+      tickGroup.rotation.z -= delta * 0.20 * speedMult;
+      ring3Group.rotation.z += delta * 0.40 * speedMult;
+      ring5Mesh.rotation.z -= delta * 0.16 * speedMult;
 
       // Gyroscopic 3D Wobble
-      gyroRingMesh.rotation.z += delta * 0.6 * speedMult;
-      gyroRingMesh.rotation.x = 0.35 + Math.sin(time * 1.8) * 0.12;
-      gyroRingMesh.rotation.y = 0.25 + Math.cos(time * 1.5) * 0.12;
+      gyroRingMesh.rotation.z += delta * 0.55 * speedMult;
+      gyroRingMesh.rotation.x = 0.35 + Math.sin(time * 1.8) * 0.10;
+      gyroRingMesh.rotation.y = 0.25 + Math.cos(time * 1.5) * 0.10;
 
       // -----------------------------------------------------------------------
       // B. VOICE-REACTIVE RINGS EXPANSION (Moving outward when agent speaks)
       // -----------------------------------------------------------------------
-      // The user requested: "outer multiple rings rotating... rings expanding of that ring of the circle of the Jarvis logo"
-      const idleBreathing = Math.sin(time * 2.2) * 0.025;
+      // Tuned expansion: gently expands outward during speech, safely bounded to fit in frame
+      const idleBreathing = Math.sin(time * 2.2) * 0.02;
       const targetExpansion = speaking
-        ? 1.0 + voiceLevel * 0.42 + voiceBass * 0.28
+        ? 1.0 + voiceLevel * 0.22 + voiceBass * 0.14
         : 1.0 + idleBreathing;
 
-      // Smooth lerp to expansion target
       const currentScale = outerRingsGroup.scale.x;
       const lerpedScale = THREE.MathUtils.lerp(currentScale, targetExpansion, 0.18);
       outerRingsGroup.scale.set(lerpedScale, lerpedScale, 1.0);
 
-      // Rings also pull back slightly in Z to create layered perspective depth
+      // Rings pull back slightly in Z to create layered perspective depth
       outerRingsGroup.position.z = THREE.MathUtils.lerp(
         outerRingsGroup.position.z,
-        speaking ? -0.15 - voiceLevel * 0.2 : 0.0,
+        speaking ? -0.12 - voiceLevel * 0.15 : 0.0,
         0.12
       );
 
       // -----------------------------------------------------------------------
       // C. VOICE-REACTIVE CIRCLE & LOGO BUMPING INSIDE AND OUTSIDE (Z-Axis Depth Pulse)
       // -----------------------------------------------------------------------
-      // The user requested: "And then the circle of logo bumping inside and outside with the reference to the voice"
-      const voiceBounce = Math.sin(time * 9.0) * (voiceLevel * 0.14);
-      const bassKick = voiceBass * 0.42;
-      const targetCoreZ = speaking ? bassKick + voiceBounce : Math.sin(time * 1.6) * 0.04;
+      const voiceBounce = Math.sin(time * 8.0) * (voiceLevel * 0.10);
+      const bassKick = voiceBass * 0.30;
+      const targetCoreZ = speaking ? bassKick + voiceBounce : Math.sin(time * 1.6) * 0.03;
 
       // Reactor core pumps forward and backward in 3D space
       reactorCoreGroup.position.z = THREE.MathUtils.lerp(
         reactorCoreGroup.position.z,
         targetCoreZ,
-        0.2
+        0.20
       );
 
       // Core scale bumping (expands on speech syllables)
       const targetCoreScale = speaking
-        ? 1.0 + voiceBass * 0.15 + voiceLevel * 0.08
-        : 1.0 + Math.sin(time * 1.6) * 0.015;
+        ? 1.0 + voiceBass * 0.12 + voiceLevel * 0.06
+        : 1.0 + Math.sin(time * 1.6) * 0.012;
 
       const currentCoreScale = reactorCoreGroup.scale.x;
-      const lerpedCoreScale = THREE.MathUtils.lerp(currentCoreScale, targetCoreScale, 0.2);
-      reactorCoreGroup.scale.set(lerpedCoreScale, lerpedCoreScale, 1.0 + bassKick * 0.2);
+      const lerpedCoreScale = THREE.MathUtils.lerp(currentCoreScale, targetCoreScale, 0.20);
+      reactorCoreGroup.scale.set(lerpedCoreScale, lerpedCoreScale, 1.0 + bassKick * 0.18);
 
-      // Inner triangular core piston punches forward even further on bass kicks
+      // Inner triangular core piston punches forward on bass kicks
       innerCorePistonGroup.position.z = THREE.MathUtils.lerp(
         innerCorePistonGroup.position.z,
-        speaking ? 0.06 + voiceBass * 0.24 : 0.0,
+        speaking ? 0.05 + voiceBass * 0.20 : 0.0,
         0.25
       );
 
       // -----------------------------------------------------------------------
       // D. LIGHTING & GLOW SURGE
       // -----------------------------------------------------------------------
-      const targetLightIntensity = speaking ? 4.5 + voiceLevel * 6.5 + voiceBass * 4.0 : 3.5;
+      const targetLightIntensity = speaking ? 4.5 + voiceLevel * 5.5 + voiceBass * 3.5 : 3.5;
       corePointLight.intensity = THREE.MathUtils.lerp(
         corePointLight.intensity,
         targetLightIntensity,
@@ -679,7 +684,7 @@ export default function JarvisArcReactorCanvas({
       );
       coreWhiteLight.intensity = THREE.MathUtils.lerp(
         coreWhiteLight.intensity,
-        speaking ? 2.5 + voiceLevel * 4.0 : 1.8,
+        speaking ? 2.5 + voiceLevel * 3.5 : 1.8,
         0.15
       );
 
@@ -691,13 +696,13 @@ export default function JarvisArcReactorCanvas({
       // -----------------------------------------------------------------------
       // E. SHOCKWAVE PULSE
       // -----------------------------------------------------------------------
-      if (speaking && Math.random() < voiceBass * 0.25 && shockwaveProgress === 0) {
+      if (speaking && Math.random() < voiceBass * 0.22 && shockwaveProgress === 0) {
         shockwaveProgress = 0.01;
       }
 
       if (shockwaveProgress > 0) {
         shockwaveProgress += delta * 1.8;
-        const swScale = 1.0 + shockwaveProgress * 1.4;
+        const swScale = 1.0 + shockwaveProgress * 1.35;
         shockwaveMesh.scale.set(swScale, swScale, 1.0);
         shockwaveMat.opacity = Math.max(0, (1.0 - shockwaveProgress) * 0.85);
 
@@ -713,17 +718,16 @@ export default function JarvisArcReactorCanvas({
       const posAttr = particleGeo.attributes.position as THREE.BufferAttribute;
       const posArray = posAttr.array as Float32Array;
 
-      const pSpeedFactor = speaking ? 1.0 + voiceTreble * 2.5 + voiceLevel * 1.5 : 1.0;
+      const pSpeedFactor = speaking ? 1.0 + voiceTreble * 2.2 + voiceLevel * 1.4 : 1.0;
 
       for (let p = 0; p < PARTICLE_COUNT; p++) {
         pAngles[p] += delta * pSpeeds[p] * 0.6 * pSpeedFactor;
         const a = pAngles[p];
-        const r = pRadii[p] * (1.0 + voiceLevel * 0.18);
+        const r = pRadii[p] * (1.0 + voiceLevel * 0.14);
 
         posArray[p * 3] = Math.cos(a) * r;
         posArray[p * 3 + 1] = Math.sin(a) * r;
-        // Subtle helical drift in Z
-        posArray[p * 3 + 2] = pZOffsets[p] + Math.sin(time * 3 + a) * 0.12;
+        posArray[p * 3 + 2] = pZOffsets[p] + Math.sin(time * 3 + a) * 0.10;
       }
       posAttr.needsUpdate = true;
 
@@ -734,14 +738,13 @@ export default function JarvisArcReactorCanvas({
     renderLoop();
 
     // =========================================================================
-    // 12. CLEANUP & RESIZE HANDLING
+    // 12. CLEANUP & DYNAMIC RESIZE HANDLING
     // =========================================================================
     const handleResize = () => {
       if (!container) return;
       const nw = container.clientWidth || 800;
-      const nh = container.clientHeight || 360;
-      camera.aspect = nw / nh;
-      camera.updateProjectionMatrix();
+      const nh = container.clientHeight || 420;
+      updateCameraFraming(camera, nw, nh);
       renderer.setSize(nw, nh);
     };
 
@@ -771,41 +774,41 @@ export default function JarvisArcReactorCanvas({
 
   return (
     <div
-      className="relative w-full h-[320px] sm:h-[380px] rounded-2xl overflow-hidden bg-slate-950 border border-cyan-950/60 shadow-[0_0_35px_-5px_rgba(0,240,255,0.2)] select-none cursor-pointer group"
+      className="relative w-full h-[360px] sm:h-[440px] md:h-[480px] rounded-2xl overflow-hidden bg-slate-950 border border-cyan-900/50 shadow-[0_0_40px_-5px_rgba(0,240,255,0.22)] select-none cursor-pointer group"
       title="Iron Man JARVIS Arc Reactor — Click to trigger discharge & replay voice"
     >
       {/* Three.js Canvas Container */}
       <div ref={mountRef} className="absolute inset-0 w-full h-full" />
 
-      {/* Futuristic HUD Framing Overlays */}
-      <div className="absolute top-3 left-4 flex items-center gap-2 pointer-events-none">
-        <span className="relative flex h-2.5 w-2.5">
+      {/* Futuristic HUD Framing Overlays (Compact Pill Style in Corners) */}
+      <div className="absolute top-3.5 left-3.5 sm:left-4 flex items-center gap-2 pointer-events-none bg-slate-950/75 backdrop-blur-md px-3 py-1.5 rounded-xl border border-cyan-900/50 shadow-md">
+        <span className="relative flex h-2 w-2">
           <span
             className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
               isSpeaking ? 'bg-cyan-400' : 'bg-slate-500'
             }`}
           />
           <span
-            className={`relative inline-flex rounded-full h-2.5 w-2.5 ${
+            className={`relative inline-flex rounded-full h-2 w-2 ${
               isSpeaking ? 'bg-cyan-500 shadow-[0_0_8px_#00f0ff]' : 'bg-slate-400'
             }`}
           />
         </span>
-        <span className="text-[10px] font-mono font-bold tracking-widest text-cyan-400/90 uppercase">
-          JARVIS ARC REACTOR MK-VI // {isSpeaking ? 'TRANSMITTING' : 'ONLINE'}
+        <span className="text-[10px] sm:text-[11px] font-mono font-bold tracking-widest text-cyan-400 uppercase">
+          JARVIS MK-VI // {isSpeaking ? 'TRANSMITTING' : 'ONLINE'}
         </span>
       </div>
 
-      <div className="absolute top-3 right-4 pointer-events-none">
-        <span className="text-[10px] font-mono text-cyan-500/70 tracking-widest uppercase">
+      <div className="absolute top-3.5 right-3.5 sm:right-4 pointer-events-none bg-slate-950/75 backdrop-blur-md px-3 py-1.5 rounded-xl border border-cyan-900/50 shadow-md hidden sm:block">
+        <span className="text-[10px] sm:text-[11px] font-mono text-cyan-400/90 tracking-wider uppercase">
           OUTPUT: 8.2 GJ/S • AUDIO-SYNC
         </span>
       </div>
 
-      {/* Subtle Bottom Interactive Directive Hint */}
-      <div className="absolute bottom-2.5 inset-x-0 text-center pointer-events-none opacity-60 group-hover:opacity-100 transition-opacity">
-        <span className="text-[10px] font-mono tracking-wider text-cyan-300/80 bg-slate-900/80 px-2.5 py-1 rounded-full border border-cyan-800/40">
-          CLICK REACTOR TO DISCHARGE ENERGY • MOVE CURSOR TO TILT
+      {/* Bottom Interactive Directive Hint */}
+      <div className="absolute bottom-3 inset-x-0 text-center pointer-events-none px-4">
+        <span className="inline-block text-[10px] sm:text-[11px] font-mono tracking-wider text-cyan-300 bg-slate-950/85 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-cyan-800/50 shadow-[0_0_15px_rgba(0,240,255,0.15)] opacity-80 group-hover:opacity-100 transition-opacity">
+          CLICK REACTOR TO DISCHARGE ENERGY • DRAG TO TILT 3D
         </span>
       </div>
     </div>
