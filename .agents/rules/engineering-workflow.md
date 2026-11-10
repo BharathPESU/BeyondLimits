@@ -73,6 +73,6 @@ Whenever mobile features, WebView settings, Capacitor configs, or core UI change
 1. Deploy directly to Vercel production:
    ```bash
    export VERCEL_TOKEN=$(grep '^VERCEL_TOKEN=' .env.local | cut -d= -f2- | tr -d '"' | tr -d "'")
-   NODE_OPTIONS="--require $(pwd)/scratch/dns-override.js" npx vercel deploy --prod --yes --token="$VERCEL_TOKEN"
+   NODE_OPTIONS="--require $(pwd)/scripts/dns-override.js" npx vercel deploy --prod --yes --token="$VERCEL_TOKEN"
    ```
 2. Verify that the production URL (`https://project-vuxsx.vercel.app`) is healthy and aliased properly.

@@ -39,7 +39,7 @@ Whenever mobile features, Capacitor configurations, or core app updates are comp
 - Deploy live to Vercel:
   ```bash
   export VERCEL_TOKEN=$(grep '^VERCEL_TOKEN=' .env.local | cut -d= -f2- | tr -d '"' | tr -d "'")
-  NODE_OPTIONS="--require $(pwd)/scratch/dns-override.js" npx vercel deploy --prod --yes --token="$VERCEL_TOKEN"
+  NODE_OPTIONS="--require $(pwd)/scripts/dns-override.js" npx vercel deploy --prod --yes --token="$VERCEL_TOKEN"
   ```
 - Verify the live production deployment on `https://project-vuxsx.vercel.app`.
 
