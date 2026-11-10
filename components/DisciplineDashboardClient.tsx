@@ -616,19 +616,10 @@ export default function DisciplineDashboardClient({
 
           const playPromise = audio.play();
           if (playPromise !== undefined) {
-            playPromise.catch((err) => {
+            playPromise.catch(() => {
               stopAudioTelemetryLoop();
               setIsSpeaking(false);
               activeAudioRef.current = null;
-              if (isAutoMount && err.name === 'NotAllowedError') {
-                const handleFirstUserInteraction = () => {
-                  window.removeEventListener('pointerdown', handleFirstUserInteraction);
-                  window.removeEventListener('keydown', handleFirstUserInteraction);
-                  void playMainVoiceClip(clipUrl, false);
-                };
-                window.addEventListener('pointerdown', handleFirstUserInteraction, { once: true });
-                window.addEventListener('keydown', handleFirstUserInteraction, { once: true });
-              }
               resolve();
             });
           }
@@ -896,8 +887,14 @@ export default function DisciplineDashboardClient({
     const t = setTimeout(() => {
       void playMainVoiceClip(MAIN_VOICE_QUOTES[0], true);
     }, 350);
-    return () => clearTimeout(t);
-  }, [playMainVoiceClip]);
+    return () => {
+      clearTimeout(t);
+      stopVoice();
+      try {
+        window.speechSynthesis?.cancel();
+      } catch {}
+    };
+  }, [playMainVoiceClip, stopVoice]);
 
   const handleRefreshMotivation = async () => {
     setLoadingMotivation(true);

@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
     const expectedUsername = (process.env.ADMIN_USERNAME || 'admin').trim();
     const expectedPassword = (process.env.ADMIN_PASSWORD || 'BeyondLimits@2026!').trim();
     const totpSecret = (
-      process.env.ADMIN_TOTP_SECRET || 'BEYONDLIMITSMFAADMINKEY234567AB'
+      process.env.ADMIN_TOTP_SECRET || 'EMS4YSNFN5LHBDUHJOL4UTBI6CIRKIE6'
     ).trim();
 
     // 1. Verify Username & Password

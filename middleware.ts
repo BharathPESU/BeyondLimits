@@ -21,7 +21,6 @@ const isPublicRoute = createRouteMatcher([
   '/assets(.*)',
   '/api/admin/login(.*)',
   '/api/admin/logout(.*)',
-  '/api/admin/mfa-setup(.*)',
   '/api/songs(.*)',
   '/api/workout/routines(.*)',
   '/admin(.*)',
@@ -40,12 +39,11 @@ export default clerkMiddleware(async (auth, request) => {
     return NextResponse.next();
   }
 
-  // 2. Guard /api/admin endpoints (except login, logout, and mfa-setup)
+  // 2. Guard /api/admin endpoints (except login and logout)
   if (
     pathname.startsWith('/api/admin') &&
     !pathname.startsWith('/api/admin/login') &&
-    !pathname.startsWith('/api/admin/logout') &&
-    !pathname.startsWith('/api/admin/mfa-setup')
+    !pathname.startsWith('/api/admin/logout')
   ) {
     const adminToken = request.cookies.get(ADMIN_COOKIE_NAME)?.value;
     if (!(await verifyAdminSessionToken(adminToken))) {

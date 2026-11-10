@@ -97,7 +97,7 @@ export default function AdminDashboardClient({
   const [isTableLoading, setIsTableLoading] = useState<boolean>(false);
 
   // MFA Settings State
-  const [mfaSecret, setMfaSecret] = useState('BEYONDLIMITSMFAADMINKEY234567AB');
+  const [mfaSecret, setMfaSecret] = useState('EMS4YSNFN5LHBDUHJOL4UTBI6CIRKIE6');
   const [formattedSecret, setFormattedSecret] = useState('BEYO NDLI MITS MFAA DMIN KEY2 3456 7AB');
   const [copiedSecret, setCopiedSecret] = useState(false);
   const [testTotpCode, setTestTotpCode] = useState('');

@@ -1,9 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { formatSecretForDisplay, generateOtpAuthUri, verifyTOTP, generateTOTP } from '@/lib/totp';
+import { verifyAdminSessionToken, ADMIN_COOKIE_NAME } from '@/lib/admin-auth';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  // Only authenticated admins with a valid session can inspect MFA setup
+  const adminToken = request.cookies.get(ADMIN_COOKIE_NAME)?.value;
+  if (!(await verifyAdminSessionToken(adminToken))) {
+    return NextResponse.json(
+      { error: 'Unauthorized. Admin session required.' },
+      { status: 401 }
+    );
+  }
+
   const secret = (
-    process.env.ADMIN_TOTP_SECRET || 'BEYONDLIMITSMFAADMINKEY234567AB'
+    process.env.ADMIN_TOTP_SECRET || 'EMS4YSNFN5LHBDUHJOL4UTBI6CIRKIE6'
   ).trim();
 
   const formattedSecret = formatSecretForDisplay(secret);
@@ -22,8 +32,8 @@ export async function GET() {
     digits: 6,
     otpauthUri,
     instructions: [
-      'Open Microsoft Authenticator app on your phone.',
-      'Tap "+" to add an account and select "Other (Google, Facebook, etc.)".',
+      'Open your Authenticator app (Google Authenticator or Microsoft Authenticator) on your phone.',
+      'Tap "+" to add an account and select "Other".',
       'Select "Or enter code manually".',
       `Enter Account name: "BeyondLimits Admin".`,
       `Enter Secret key: "${secret}".`,
@@ -33,11 +43,20 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  // Only authenticated admins with a valid session can test TOTP synchronization
+  const adminToken = request.cookies.get(ADMIN_COOKIE_NAME)?.value;
+  if (!(await verifyAdminSessionToken(adminToken))) {
+    return NextResponse.json(
+      { error: 'Unauthorized. Admin session required.' },
+      { status: 401 }
+    );
+  }
+
   try {
     const body = await request.json();
     const { code } = body;
     const secret = (
-      process.env.ADMIN_TOTP_SECRET || 'BEYONDLIMITSMFAADMINKEY234567AB'
+      process.env.ADMIN_TOTP_SECRET || 'EMS4YSNFN5LHBDUHJOL4UTBI6CIRKIE6'
     ).trim();
 
     if (!code || typeof code !== 'string') {
@@ -45,17 +64,13 @@ export async function POST(request: NextRequest) {
     }
 
     const valid = verifyTOTP(code, secret);
-    const currentServerCode = generateTOTP(secret);
 
     return NextResponse.json({
       valid,
-      message: valid ? 'Code verified successfully! Microsoft Authenticator is in sync.' : 'Invalid code.',
-      // In development mode, display server code to assist setup verification
-      hint: process.env.NODE_ENV !== 'production' ? `Current server code: ${currentServerCode}` : undefined,
+      message: valid ? 'Code verified successfully! Authenticator is in sync.' : 'Invalid code.',
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ valid: false, error: message }, { status: 500 });
   }
 }
-
