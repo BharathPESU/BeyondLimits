@@ -21,6 +21,9 @@ import {
   AlertTriangle,
   Clock,
   Edit3,
+  TrendingUp,
+  Award,
+  Sparkles,
 } from 'lucide-react';
 import { AttendanceRecord, FriendId } from '@/lib/types';
 
@@ -29,6 +32,7 @@ interface AttendanceCalendarModalProps {
   onClose: () => void;
   records: AttendanceRecord[];
   onEditDay: (friendId: FriendId, date: string) => void;
+  userName?: string;
 }
 
 export default function AttendanceCalendarModal({
@@ -36,23 +40,40 @@ export default function AttendanceCalendarModal({
   onClose,
   records,
   onEditDay,
+  userName,
 }: AttendanceCalendarModalProps) {
   const [currentMonth, setCurrentMonth] = useState<Date>(() => new Date());
   const [selectedDayStr, setSelectedDayStr] = useState<string>(() =>
     format(new Date(), 'yyyy-MM-dd')
   );
-  const [friendFilter, setFriendFilter] = useState<'both' | FriendId>('both');
 
-  // Map records by date for O(1) lookup
+  // Determine display name
+  const cachedProfileName =
+    typeof window !== 'undefined'
+      ? (() => {
+          try {
+            const raw = localStorage.getItem('beyondlimits_user_profile');
+            return raw ? JSON.parse(raw).name : '';
+          } catch {
+            return '';
+          }
+        })()
+      : '';
+  const displayName = userName || cachedProfileName || 'You';
+
+  // Map user records by date for O(1) lookup
+  // Priority: record with friendId 'user', then 'bharath_cd', then any record for that day
   const recordsByDate = useMemo(() => {
-    const map = new Map<
-      string,
-      { bharath_cd?: AttendanceRecord; bharath_r?: AttendanceRecord }
-    >();
+    const map = new Map<string, AttendanceRecord>();
     for (const rec of records) {
-      const entry = map.get(rec.date) || {};
-      entry[rec.friendId] = rec;
-      map.set(rec.date, entry);
+      const existing = map.get(rec.date);
+      if (!existing) {
+        map.set(rec.date, rec);
+      } else if (rec.friendId === 'user') {
+        map.set(rec.date, rec);
+      } else if (existing.friendId !== 'user' && rec.friendId === 'bharath_cd') {
+        map.set(rec.date, rec);
+      }
     }
     return map;
   }, [records]);
@@ -71,25 +92,49 @@ export default function AttendanceCalendarModal({
     end: calendarEnd,
   });
 
-  const selectedDayRecords = recordsByDate.get(selectedDayStr) || {};
-  const cdSelected = selectedDayRecords.bharath_cd;
-  const brSelected = selectedDayRecords.bharath_r;
+  const selectedDayRecord = recordsByDate.get(selectedDayStr);
 
-  // Monthly totals for current visible month
+  // Monthly stats for the current visible month
   const monthPrefix = format(currentMonth, 'yyyy-MM');
-  const monthRecords = records.filter((r) => r.date.startsWith(monthPrefix));
-  const cdCleanMonth = monthRecords.filter(
-    (r) => r.friendId === 'bharath_cd' && !r.relapsed
-  ).length;
-  const cdRelapseMonth = monthRecords.filter(
-    (r) => r.friendId === 'bharath_cd' && r.relapsed
-  ).length;
-  const brCleanMonth = monthRecords.filter(
-    (r) => r.friendId === 'bharath_r' && !r.relapsed
-  ).length;
-  const brRelapseMonth = monthRecords.filter(
-    (r) => r.friendId === 'bharath_r' && r.relapsed
-  ).length;
+  const monthDays = eachDayOfInterval({ start: monthStart, end: monthEnd });
+  let cleanMonthCount = 0;
+  let relapseMonthCount = 0;
+  let totalMarkedMonth = 0;
+
+  for (const d of monthDays) {
+    const dStr = format(d, 'yyyy-MM-dd');
+    const rec = recordsByDate.get(dStr);
+    if (rec) {
+      totalMarkedMonth++;
+      if (rec.relapsed) {
+        relapseMonthCount++;
+      } else {
+        cleanMonthCount++;
+      }
+    }
+  }
+
+  const monthControlRate =
+    totalMarkedMonth > 0
+      ? Math.round((cleanMonthCount / totalMarkedMonth) * 100)
+      : 100;
+  const monthRelapseRate =
+    totalMarkedMonth > 0
+      ? Math.round((relapseMonthCount / totalMarkedMonth) * 100)
+      : 0;
+
+  // Streak calculation up to selected month / overall
+  const allUserRecordsAsc = Array.from(recordsByDate.values()).sort((a, b) =>
+    a.date.localeCompare(b.date)
+  );
+  let currentStreak = 0;
+  for (let i = allUserRecordsAsc.length - 1; i >= 0; i--) {
+    if (!allUserRecordsAsc[i].relapsed) {
+      currentStreak++;
+    } else {
+      break;
+    }
+  }
 
   return (
     <div
@@ -106,8 +151,11 @@ export default function AttendanceCalendarModal({
             </div>
             <div>
               <h2 className="text-lg font-bold text-slate-900">
-                Daily Attendance Calendar
+                Self-Control Attendance Calendar
               </h2>
+              <p className="text-xs text-slate-500">
+                Tracking monthly habit consistency &amp; impulse control for {displayName}
+              </p>
             </div>
           </div>
 
@@ -123,281 +171,294 @@ export default function AttendanceCalendarModal({
 
       <div className="flex-1 overflow-y-auto p-4 sm:p-6">
         <div className="max-w-4xl w-full mx-auto bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 space-y-5">
+          {/* Month Navigation & Quick Actions */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
+                aria-label="Previous Month"
+                className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-xl border border-slate-200 hover:bg-slate-100 text-slate-700 cursor-pointer"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <span className="text-sm font-bold text-slate-900 min-w-[140px] text-center">
+                {format(currentMonth, 'MMMM yyyy')}
+              </span>
+              <button
+                type="button"
+                onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
+                aria-label="Next Month"
+                className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-xl border border-slate-200 hover:bg-slate-100 text-slate-700 cursor-pointer"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const now = new Date();
+                  setCurrentMonth(now);
+                  setSelectedDayStr(format(now, 'yyyy-MM-dd'));
+                }}
+                className="min-h-[40px] px-3.5 text-xs font-semibold text-teal-700 bg-teal-50 hover:bg-teal-100 rounded-xl transition-colors cursor-pointer"
+              >
+                Today
+              </button>
+            </div>
 
-        {/* Month Navigation & Friend Filter */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center justify-between sm:justify-start gap-2">
-            <button
-              type="button"
-              onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
-              aria-label="Previous Month"
-              className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-xl border border-slate-200 hover:bg-slate-100 text-slate-700 cursor-pointer"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <span className="text-sm font-bold text-slate-900 min-w-[130px] text-center">
-              {format(currentMonth, 'MMMM yyyy')}
-            </span>
-            <button
-              type="button"
-              onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
-              aria-label="Next Month"
-              className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-xl border border-slate-200 hover:bg-slate-100 text-slate-700 cursor-pointer"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                const now = new Date();
-                setCurrentMonth(now);
-                setSelectedDayStr(format(now, 'yyyy-MM-dd'));
-              }}
-              className="min-h-[40px] px-3 text-xs font-semibold text-teal-700 bg-teal-50 hover:bg-teal-100 rounded-xl transition-colors cursor-pointer"
-            >
-              Today
-            </button>
+            <div className="flex items-center gap-2 text-xs font-semibold text-slate-600">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200">
+                <span className="w-2 h-2 rounded-full bg-emerald-600" />
+                Clean (Controlled)
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-rose-50 text-rose-800 border border-rose-200">
+                <span className="w-2 h-2 rounded-full bg-rose-600" />
+                Relapsed
+              </span>
+            </div>
           </div>
 
-          {/* Friend Filter */}
-          <div className="grid grid-cols-3 p-1 bg-slate-100 rounded-xl border border-slate-200">
-            <button
-              type="button"
-              onClick={() => setFriendFilter('both')}
-              className={`min-h-[34px] px-2.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${
-                friendFilter === 'both'
-                  ? 'bg-white text-slate-900 shadow-xs'
-                  : 'text-slate-600'
-              }`}
-            >
-              Both
-            </button>
-            <button
-              type="button"
-              onClick={() => setFriendFilter('bharath_cd')}
-              className={`min-h-[34px] px-2.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${
-                friendFilter === 'bharath_cd'
-                  ? 'bg-white text-slate-900 shadow-xs'
-                  : 'text-slate-600'
-              }`}
-            >
-              Bharath CD
-            </button>
-            <button
-              type="button"
-              onClick={() => setFriendFilter('bharath_r')}
-              className={`min-h-[34px] px-2.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${
-                friendFilter === 'bharath_r'
-                  ? 'bg-white text-slate-900 shadow-xs'
-                  : 'text-slate-600'
-              }`}
-            >
-              Bharath R
-            </button>
-          </div>
-        </div>
+          {/* Monthly Self-Control Analytics Strip */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+              <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                Monthly Control Rate
+              </div>
+              <div
+                className={`text-xl font-black font-mono tabular-nums mt-1 ${
+                  monthControlRate >= 80
+                    ? 'text-teal-700'
+                    : monthControlRate >= 60
+                    ? 'text-amber-700'
+                    : 'text-rose-700'
+                }`}
+              >
+                {monthControlRate}%
+              </div>
+              <div className="text-[11px] text-slate-500 mt-0.5">
+                {totalMarkedMonth > 0
+                  ? `${cleanMonthCount} clean of ${totalMarkedMonth} logged`
+                  : 'No logs this month'}
+              </div>
+            </div>
 
-        {/* Monthly Summary Strip */}
-        <div className="grid grid-cols-2 gap-3 text-xs bg-slate-50 border border-slate-200 rounded-xl p-3">
-          <div className="flex items-center justify-between">
-            <span className="font-semibold text-slate-700">Bharath CD:</span>
-            <span className="font-mono tabular-nums">
-              <strong className="text-emerald-700">{cdCleanMonth}✓</strong> ·{' '}
-              <strong className="text-rose-700">{cdRelapseMonth}✗</strong>
-            </span>
-          </div>
-          <div className="flex items-center justify-between border-l border-slate-200 pl-3">
-            <span className="font-semibold text-slate-700">Bharath R:</span>
-            <span className="font-mono tabular-nums">
-              <strong className="text-emerald-700">{brCleanMonth}✓</strong> ·{' '}
-              <strong className="text-rose-700">{brRelapseMonth}✗</strong>
-            </span>
-          </div>
-        </div>
+            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+              <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                Clean Days
+              </div>
+              <div className="text-xl font-black font-mono tabular-nums text-emerald-700 mt-1">
+                {cleanMonthCount} <span className="text-xs font-normal">Days ✓</span>
+              </div>
+              <div className="text-[11px] text-slate-500 mt-0.5">
+                Urges overridden
+              </div>
+            </div>
 
-        {/* Calendar Grid */}
-        <div className="border border-slate-200 rounded-xl overflow-hidden">
-          <div className="grid grid-cols-7 bg-slate-50 border-b border-slate-200 text-center text-[11px] font-semibold text-slate-600 py-2">
-            <div>Mon</div>
-            <div>Tue</div>
-            <div>Wed</div>
-            <div>Thu</div>
-            <div>Fri</div>
-            <div>Sat</div>
-            <div>Sun</div>
+            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+              <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                Monthly Relapses
+              </div>
+              <div
+                className={`text-xl font-black font-mono tabular-nums mt-1 ${
+                  relapseMonthCount === 0 ? 'text-slate-600' : 'text-rose-700'
+                }`}
+              >
+                {relapseMonthCount} <span className="text-xs font-normal">Times ✗</span>
+              </div>
+              <div className="text-[11px] text-slate-500 mt-0.5">
+                Relapse rate: {monthRelapseRate}%
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+              <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                Active Streak
+              </div>
+              <div className="text-xl font-black font-mono tabular-nums text-teal-800 mt-1">
+                {currentStreak} <span className="text-xs font-normal">Days</span>
+              </div>
+              <div className="text-[11px] text-slate-500 mt-0.5">
+                Consecutive clean
+              </div>
+            </div>
           </div>
 
-          <div className="grid grid-cols-7 divide-x divide-y divide-slate-200">
-            {calendarDays.map((dayObj) => {
-              const dateStr = format(dayObj, 'yyyy-MM-dd');
-              const inMonth = isSameMonth(dayObj, currentMonth);
-              const isSelected = dateStr === selectedDayStr;
-              const dayData = recordsByDate.get(dateStr);
-              const cd = dayData?.bharath_cd;
-              const br = dayData?.bharath_r;
+          {/* Self-Control Progress Evaluation Banner */}
+          <div
+            className={`p-3.5 rounded-xl border text-xs leading-relaxed flex items-start gap-2.5 ${
+              totalMarkedMonth === 0
+                ? 'bg-slate-50 border-slate-200 text-slate-700'
+                : relapseMonthCount === 0 && cleanMonthCount > 0
+                ? 'bg-emerald-50/90 border-emerald-300 text-emerald-950 font-medium'
+                : monthControlRate >= 85
+                ? 'bg-teal-50/90 border-teal-300 text-teal-950 font-medium'
+                : monthControlRate >= 60
+                ? 'bg-amber-50/90 border-amber-300 text-amber-950 font-medium'
+                : 'bg-rose-50/90 border-rose-300 text-rose-950 font-medium'
+            }`}
+          >
+            {totalMarkedMonth === 0 ? (
+              <Clock className="w-4 h-4 text-slate-500 shrink-0 mt-0.5" />
+            ) : relapseMonthCount === 0 && cleanMonthCount > 0 ? (
+              <Award className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
+            ) : monthControlRate >= 85 ? (
+              <Sparkles className="w-4 h-4 text-teal-700 shrink-0 mt-0.5" />
+            ) : (
+              <AlertTriangle className="w-4 h-4 text-rose-700 shrink-0 mt-0.5" />
+            )}
 
-              return (
-                <button
-                  key={dateStr}
-                  type="button"
-                  onClick={() => setSelectedDayStr(dateStr)}
-                  className={`min-h-[66px] sm:min-h-[74px] p-1.5 flex flex-col justify-between text-left transition-colors cursor-pointer ${
-                    !inMonth ? 'bg-slate-50/60 text-slate-400' : 'bg-white'
-                  } ${
-                    isSelected
-                      ? 'ring-2 ring-inset ring-teal-600 bg-teal-50/30'
-                      : 'hover:bg-slate-50'
-                  }`}
-                >
-                  <span
-                    className={`text-xs font-mono tabular-nums font-semibold ${
+            <div>
+              {totalMarkedMonth === 0 ? (
+                <span>
+                  Log your daily attendance to track your monthly self-control rate and watch your willpower grow.
+                </span>
+              ) : relapseMonthCount === 0 && cleanMonthCount > 0 ? (
+                <span>
+                  <strong>Flawless Self-Control!</strong> You have 0 relapses this month ({cleanMonthCount} days clean). You are exercising complete command over your impulses.
+                </span>
+              ) : monthControlRate >= 85 ? (
+                <span>
+                  <strong>Strong Habit Control:</strong> You maintained self-discipline on {cleanMonthCount} out of {totalMarkedMonth} days ({monthControlRate}% clean rate). Keep eliminating late-night triggers.
+                </span>
+              ) : monthControlRate >= 60 ? (
+                <span>
+                  <strong>Urge Warning:</strong> You slipped {relapseMonthCount} times this month ({monthRelapseRate}% relapse rate). Review your logged reasons below and alter your evening routine to stop repeated slips.
+                </span>
+              ) : (
+                <span>
+                  <strong>Action Required:</strong> Your masturbation rate is {monthRelapseRate}% ({relapseMonthCount} relapses in {totalMarkedMonth} days). See this reality clearly and change your patterns immediately — keep your phone outside your bed area and reset now.
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Calendar Grid */}
+          <div className="border border-slate-200 rounded-xl overflow-hidden">
+            <div className="grid grid-cols-7 bg-slate-50 border-b border-slate-200 text-center text-[11px] font-semibold text-slate-600 py-2">
+              <div>Mon</div>
+              <div>Tue</div>
+              <div>Wed</div>
+              <div>Thu</div>
+              <div>Fri</div>
+              <div>Sat</div>
+              <div>Sun</div>
+            </div>
+
+            <div className="grid grid-cols-7 divide-x divide-y divide-slate-200">
+              {calendarDays.map((dayObj) => {
+                const dateStr = format(dayObj, 'yyyy-MM-dd');
+                const inMonth = isSameMonth(dayObj, currentMonth);
+                const isSelected = dateStr === selectedDayStr;
+                const rec = recordsByDate.get(dateStr);
+
+                return (
+                  <button
+                    key={dateStr}
+                    type="button"
+                    onClick={() => setSelectedDayStr(dateStr)}
+                    className={`min-h-[70px] sm:min-h-[80px] p-2 flex flex-col justify-between text-left transition-colors cursor-pointer ${
+                      !inMonth ? 'bg-slate-50/50 text-slate-400' : 'bg-white'
+                    } ${
                       isSelected
-                        ? 'text-teal-800'
-                        : inMonth
-                        ? 'text-slate-900'
-                        : 'text-slate-400'
+                        ? 'ring-2 ring-inset ring-teal-600 bg-teal-50/30'
+                        : 'hover:bg-slate-50'
                     }`}
                   >
-                    {format(dayObj, 'd')}
-                  </span>
+                    <span
+                      className={`text-xs font-mono tabular-nums font-semibold ${
+                        isSelected
+                          ? 'text-teal-800'
+                          : inMonth
+                          ? 'text-slate-900'
+                          : 'text-slate-400'
+                      }`}
+                    >
+                      {format(dayObj, 'd')}
+                    </span>
 
-                  {/* Friend Status Indicators */}
-                  <div className="space-y-1 w-full">
-                    {(friendFilter === 'both' ||
-                      friendFilter === 'bharath_cd') && (
-                      <div
-                        className={`text-[10px] font-mono tabular-nums font-semibold px-1 py-0.5 rounded truncate ${
-                          !cd
-                            ? 'text-slate-400 bg-slate-100/70'
-                            : cd.relapsed
-                            ? 'text-rose-800 bg-rose-100'
-                            : 'text-emerald-800 bg-emerald-100'
-                        }`}
-                      >
-                        CD:{!cd ? '-' : cd.relapsed ? '✗' : '✓'}
-                      </div>
-                    )}
-
-                    {(friendFilter === 'both' ||
-                      friendFilter === 'bharath_r') && (
-                      <div
-                        className={`text-[10px] font-mono tabular-nums font-semibold px-1 py-0.5 rounded truncate ${
-                          !br
-                            ? 'text-slate-400 bg-slate-100/70'
-                            : br.relapsed
-                            ? 'text-rose-800 bg-rose-100'
-                            : 'text-emerald-800 bg-emerald-100'
-                        }`}
-                      >
-                        BR:{!br ? '-' : br.relapsed ? '✗' : '✓'}
-                      </div>
-                    )}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Selected Date Detail & Quick Edit */}
-        <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-900 font-mono tabular-nums">
-              Selected Date: {selectedDayStr}
-            </span>
-            <span className="text-[11px] text-slate-500">
-              ✓ = Controlled · ✗ = Masturbated
-            </span>
+                    {/* Single User Daily Status Badge */}
+                    <div className="w-full">
+                      {!rec ? (
+                        <div className="text-[10px] text-slate-400 font-mono text-center py-1">
+                          —
+                        </div>
+                      ) : rec.relapsed ? (
+                        <div className="text-[10px] font-bold text-rose-800 bg-rose-100/90 border border-rose-200 rounded px-1.5 py-0.5 text-center truncate flex items-center justify-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-rose-600 shrink-0" />
+                          <span>Relapse</span>
+                        </div>
+                      ) : (
+                        <div className="text-[10px] font-bold text-emerald-800 bg-emerald-100/90 border border-emerald-200 rounded px-1.5 py-0.5 text-center truncate flex items-center justify-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 shrink-0" />
+                          <span>Clean ✓</span>
+                        </div>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {/* Bharath CD Card for Selected Day */}
-            <div className="bg-white border border-slate-200 rounded-xl p-3 flex flex-col justify-between gap-2">
+          {/* Selected Date Detail & Quick Edit */}
+          <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-slate-900 font-mono tabular-nums">
+                Selected Date: {selectedDayStr}
+              </span>
+              <span className="text-[11px] text-slate-500">
+                Log for {displayName}
+              </span>
+            </div>
+
+            <div className="bg-white border border-slate-200 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-900">
-                    Bharath CD
-                  </span>
-                  {cdSelected ? (
-                    cdSelected.relapsed ? (
-                      <span className="inline-flex items-center gap-1 text-xs font-semibold text-rose-700">
-                        <AlertTriangle className="w-3.5 h-3.5" />
-                        <span>Masturbated</span>
+                <div className="flex items-center gap-2">
+                  {selectedDayRecord ? (
+                    selectedDayRecord.relapsed ? (
+                      <span className="inline-flex items-center gap-1.5 text-xs font-bold text-rose-700 bg-rose-50 px-2.5 py-1 rounded-lg border border-rose-200">
+                        <AlertTriangle className="w-4 h-4" />
+                        <span>Relapsed (Masturbated)</span>
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700">
-                        <ShieldCheck className="w-3.5 h-3.5" />
-                        <span>Clean</span>
+                      <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
+                        <ShieldCheck className="w-4 h-4" />
+                        <span>Clean &amp; Controlled</span>
                       </span>
                     )
                   ) : (
-                    <span className="inline-flex items-center gap-1 text-xs text-slate-400">
-                      <Clock className="w-3.5 h-3.5" />
-                      <span>Unmarked</span>
+                    <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-lg">
+                      <Clock className="w-4 h-4" />
+                      <span>No Attendance Marked</span>
                     </span>
                   )}
                 </div>
-                {cdSelected?.reason && (
+
+                {selectedDayRecord?.relapsed && selectedDayRecord.reason && (
+                  <p className="text-xs text-rose-900 mt-2 font-medium bg-rose-50/50 p-2.5 rounded-lg border border-rose-100">
+                    <strong className="text-rose-700">Reason:</strong> {selectedDayRecord.reason}
+                  </p>
+                )}
+
+                {!selectedDayRecord?.relapsed && selectedDayRecord?.controlNote && (
                   <p className="text-xs text-slate-600 mt-1.5">
-                    Reason: {cdSelected.reason}
+                    <strong>Note:</strong> {selectedDayRecord.controlNote}
                   </p>
                 )}
               </div>
 
               <button
                 type="button"
-                onClick={() => onEditDay('bharath_cd', selectedDayStr)}
-                className="w-full min-h-[38px] inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-slate-800 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer"
+                onClick={() => onEditDay('user', selectedDayStr)}
+                className="min-h-[40px] px-4 inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-white bg-teal-700 hover:bg-teal-800 rounded-xl transition-colors cursor-pointer shrink-0"
               >
                 <Edit3 className="w-3.5 h-3.5" />
-                <span>{cdSelected ? 'Update CD' : 'Mark CD'}</span>
-              </button>
-            </div>
-
-            {/* Bharath R Card for Selected Day */}
-            <div className="bg-white border border-slate-200 rounded-xl p-3 flex flex-col justify-between gap-2">
-              <div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-900">
-                    Bharath R
-                  </span>
-                  {brSelected ? (
-                    brSelected.relapsed ? (
-                      <span className="inline-flex items-center gap-1 text-xs font-semibold text-rose-700">
-                        <AlertTriangle className="w-3.5 h-3.5" />
-                        <span>Masturbated</span>
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700">
-                        <ShieldCheck className="w-3.5 h-3.5" />
-                        <span>Clean</span>
-                      </span>
-                    )
-                  ) : (
-                    <span className="inline-flex items-center gap-1 text-xs text-slate-400">
-                      <Clock className="w-3.5 h-3.5" />
-                      <span>Unmarked</span>
-                    </span>
-                  )}
-                </div>
-                {brSelected?.reason && (
-                  <p className="text-xs text-slate-600 mt-1.5">
-                    Reason: {brSelected.reason}
-                  </p>
-                )}
-              </div>
-
-              <button
-                type="button"
-                onClick={() => onEditDay('bharath_r', selectedDayStr)}
-                className="w-full min-h-[38px] inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-slate-800 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer"
-              >
-                <Edit3 className="w-3.5 h-3.5" />
-                <span>{brSelected ? 'Update BR' : 'Mark BR'}</span>
+                <span>
+                  {selectedDayRecord ? 'Update Status' : 'Mark Attendance'}
+                </span>
               </button>
             </div>
           </div>
-        </div>
         </div>
       </div>
     </div>

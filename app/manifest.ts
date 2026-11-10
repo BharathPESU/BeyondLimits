@@ -6,7 +6,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: 'BeyondLimits — Discipline & Workout Tracker',
     short_name: 'BeyondLimits',
     description:
-      'Daily motivation with strong voice, progress analytics, and 12-exercise home workout for Bharath CD and Bharath R.',
+      'Daily motivation with strong voice, personal habit and relapse progress analytics, and 12-exercise home workout for your discipline journey.',
     start_url: '/?source=pwa',
     scope: '/',
     display: 'standalone',

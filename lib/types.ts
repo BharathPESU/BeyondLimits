@@ -1,4 +1,4 @@
-export type FriendId = 'bharath_cd' | 'bharath_r';
+export type FriendId = 'user' | 'bharath_cd' | 'bharath_r' | string;
 
 export interface FriendProfile {
   id: FriendId;
@@ -41,6 +41,40 @@ export interface FriendStats {
   monthlyMarkedDays: number;
   monthlyDisciplineRate: number;
   averageUrgeIntensity: number;
+}
+
+export interface UserProgressStats {
+  userId: string;
+  userName: string;
+  totalMarkedDays: number;
+  cleanDays: number;
+  relapseDays: number;
+  disciplineRate: number; // 0 - 100 (% clean / self-control)
+  relapseRate: number; // 0 - 100 (% relapsed)
+  currentStreak: number;
+  longestStreak: number;
+  weeklyCleanDays: number;
+  weeklyRelapseDays: number;
+  weeklyMarkedDays: number;
+  weeklyDisciplineRate: number;
+  monthlyCleanDays: number;
+  monthlyRelapseDays: number;
+  monthlyMarkedDays: number;
+  monthlyDisciplineRate: number;
+  monthlyRelapseRate: number;
+  averageUrgeIntensity: number;
+  dailyBreakdown: Array<{
+    date: string;
+    dayName: string;
+    status: 'clean' | 'relapsed' | 'unmarked';
+    reason: string;
+  }>;
+  weeklyTrend: Array<{
+    weekLabel: string;
+    cleanDays: number;
+    relapseDays: number;
+    disciplineRate: number;
+  }>;
 }
 
 export interface WeeklyAchievementComparison {
@@ -147,13 +181,15 @@ export interface PhoneReminderConfig {
     date: string;
     bharathCdMarked: boolean;
     bharathRMarked: boolean;
+    userMarked?: boolean;
   };
   recentLogs: ReminderLogEntry[];
 }
 
 export interface DashboardPayload {
   friends: FriendProfile[];
-  stats: Record<FriendId, FriendStats>;
+  stats: Record<string, FriendStats>;
+  userStats: UserProgressStats;
   weeklyAchievement: WeeklyAchievementComparison;
   monthlyProgress: MonthlyProgressSummary;
   records: AttendanceRecord[];

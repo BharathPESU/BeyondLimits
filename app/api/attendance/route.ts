@@ -7,7 +7,8 @@ export const dynamic = 'force-dynamic';
 
 const UpsertAttendanceSchema = z
   .object({
-    friendId: z.enum(['bharath_cd', 'bharath_r']),
+    friendId: z.string().optional().default('user'),
+    friendName: z.string().optional(),
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD'),
     relapsed: z.boolean(),
     reason: z.string().optional().default(''),

@@ -29,8 +29,12 @@ import {
   Dumbbell,
   User,
   Settings,
+  ShieldCheck,
+  AlertTriangle,
+  Award,
+  TrendingUp,
 } from 'lucide-react';
-import { SignInButton, SignUpButton, Show, UserButton } from '@clerk/nextjs';
+import { SignInButton, SignUpButton, Show, UserButton, useUser } from '@clerk/nextjs';
 import {
   DailyMotivationRecord,
   DailyTechNewsRecord,
@@ -68,6 +72,27 @@ interface DisciplineDashboardClientProps {
 export default function DisciplineDashboardClient({
   initialData,
 }: DisciplineDashboardClientProps) {
+  const { user } = useUser();
+  const [profileName, setProfileName] = useState<string>('');
+
+  useEffect(() => {
+    const loadLocalProfile = () => {
+      try {
+        const raw = localStorage.getItem('beyondlimits_user_profile');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed.name) setProfileName(parsed.name);
+        }
+      } catch {}
+    };
+    loadLocalProfile();
+    const handleUpdate = () => loadLocalProfile();
+    window.addEventListener('user_profile_updated', handleUpdate);
+    return () => window.removeEventListener('user_profile_updated', handleUpdate);
+  }, []);
+
+  const displayName = profileName || user?.fullName || user?.firstName || 'Warrior';
+
   const [dashboard, setDashboard] = useState<DashboardPayload>(initialData);
   const [graphMode, setGraphMode] = useState<'weekly' | 'monthly'>('weekly');
   const [isAttendanceOpen, setIsAttendanceOpen] = useState<boolean>(false);
@@ -90,7 +115,7 @@ export default function DisciplineDashboardClient({
   const newsRefreshIndexRef = useRef<number>(0);
   const auto7AmNewsDateRef = useRef<string>('');
 
-  const [selectedFriend, setSelectedFriend] = useState<FriendId>('bharath_cd');
+  const [selectedFriend, setSelectedFriend] = useState<FriendId>('user');
   const [selectedDate, setSelectedDate] = useState<string>(() =>
     new Date().toISOString().slice(0, 10)
   );
@@ -176,14 +201,15 @@ export default function DisciplineDashboardClient({
       }
 
       // 2. Daily 8:00 PM Phone Attendance reminder
-      const bothMarked =
-        dashboard.reminderConfig.todayStatus.bharathCdMarked &&
-        dashboard.reminderConfig.todayStatus.bharathRMarked;
+      const isMarkedToday =
+        dashboard.reminderConfig.todayStatus.userMarked ??
+        (dashboard.reminderConfig.todayStatus.bharathCdMarked &&
+          dashboard.reminderConfig.todayStatus.bharathRMarked);
 
       if (
         dashboard.reminderConfig.enabled &&
         hhmm === (dashboard.reminderConfig.reminderTime || '20:00') &&
-        !bothMarked &&
+        !isMarkedToday &&
         auto8PmTriggeredRef.current !== todayStr
       ) {
         auto8PmTriggeredRef.current = todayStr;
@@ -536,33 +562,60 @@ export default function DisciplineDashboardClient({
     }
   };
 
-  const openAttendanceFor = (friendId: FriendId, dateStr?: string) => {
-    setSelectedFriend(friendId);
+  const openAttendance = (dateStr?: string) => {
     setSelectedDate(dateStr || new Date().toISOString().slice(0, 10));
     setIsAttendanceOpen(true);
   };
 
-  const existingRecord = dashboard.records.find(
-    (r) => r.friendId === selectedFriend && r.date === selectedDate
-  );
+  const existingRecord =
+    dashboard.records.find(
+      (r) =>
+        (r.friendId === 'user' || r.friendId === 'bharath_cd') &&
+        r.date === selectedDate
+    ) || dashboard.records.find((r) => r.date === selectedDate);
 
-  const weeklyChartData = dashboard.weeklyAchievement.dailyBreakdown.map(
-    (day) => ({
-      name: day.dayName.split(',')[0],
-      date: day.date,
-      bharathCdClean: day.bharathCdStatus === 'clean' ? 1 : 0,
-      bharathRClean: day.bharathRStatus === 'clean' ? 1 : 0,
-      bharathCdRelapse: day.bharathCdStatus === 'relapsed' ? 1 : 0,
-      bharathRRelapse: day.bharathRStatus === 'relapsed' ? 1 : 0,
-    })
-  );
+  const userStats = dashboard.userStats || {
+    userId: 'user',
+    userName: displayName,
+    totalMarkedDays: 0,
+    cleanDays: 0,
+    relapseDays: 0,
+    disciplineRate: 100,
+    relapseRate: 0,
+    currentStreak: 0,
+    longestStreak: 0,
+    weeklyCleanDays: 0,
+    weeklyRelapseDays: 0,
+    weeklyMarkedDays: 0,
+    weeklyDisciplineRate: 100,
+    monthlyCleanDays: 0,
+    monthlyRelapseDays: 0,
+    monthlyMarkedDays: 0,
+    monthlyDisciplineRate: 100,
+    monthlyRelapseRate: 0,
+    averageUrgeIntensity: 2,
+    dailyBreakdown: [],
+    weeklyTrend: [],
+  };
+
+  const weeklyChartData = (userStats.dailyBreakdown || []).map((day) => ({
+    name: day.dayName.split(',')[0],
+    date: day.date,
+    clean: day.status === 'clean' ? 1 : 0,
+    relapse: day.status === 'relapsed' ? 1 : 0,
+  }));
+
+  const monthlyTrendData = (userStats.weeklyTrend || []).map((week) => ({
+    weekLabel: week.weekLabel,
+    clean: week.cleanDays,
+    relapse: week.relapseDays,
+    disciplineRate: week.disciplineRate,
+  }));
 
   const recentRelapses = dashboard.records
     .filter((r) => r.relapsed)
     .slice(0, 4);
 
-  const cdStats = dashboard.stats.bharath_cd;
-  const brStats = dashboard.stats.bharath_r;
   const motivation = dashboard.dailyMotivation;
 
   return (
@@ -592,7 +645,7 @@ export default function DisciplineDashboardClient({
                 </span>
               </div>
               <p className="text-xs text-slate-500 hidden sm:block">
-                Bharath CD &amp; Bharath R
+                {displayName}
               </p>
             </div>
           </div>
@@ -650,11 +703,18 @@ export default function DisciplineDashboardClient({
             onReplayVoice={handleJarvisClick}
           />
 
-          {/* Voice Playback & Refresh Controls */}
-          <div className="flex flex-wrap items-center justify-between gap-2.5 pt-1">
-            <span className="text-xs font-bold uppercase tracking-wider text-teal-400">
-              Daily Discipline Briefing ({motivation.date})
-            </span>
+          {/* Voice Playback & Audio Controls */}
+          <div className="flex flex-wrap items-center justify-between gap-2.5 pt-2 border-t border-slate-800/80">
+            <div className="flex items-center gap-2">
+              <span
+                className={`w-2.5 h-2.5 rounded-full ${
+                  isSpeaking ? 'bg-amber-400 animate-pulse' : 'bg-teal-500'
+                }`}
+              />
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-300">
+                JARVIS Discipline Voice
+              </span>
+            </div>
 
             <div className="flex items-center gap-2">
               <button
@@ -681,7 +741,7 @@ export default function DisciplineDashboardClient({
                 type="button"
                 disabled={loadingMotivation}
                 onClick={handleRefreshMotivation}
-                title="Find New Motivation (Tavily + Gemini)"
+                title="Refresh Voice"
                 className="min-h-[40px] min-w-[40px] inline-flex items-center justify-center bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl transition-colors disabled:opacity-50 cursor-pointer"
               >
                 <RefreshCw
@@ -692,97 +752,9 @@ export default function DisciplineDashboardClient({
               </button>
             </div>
           </div>
-
-          <h1 className="text-lg sm:text-2xl font-bold tracking-tight leading-snug text-balance">
-            {motivation.headline}
-          </h1>
-
-          <blockquote className="text-sm sm:text-base text-slate-200 italic border-t border-slate-800 pt-3 leading-relaxed">
-            &ldquo;{motivation.quote}&rdquo;
-            <footer className="not-italic text-xs font-semibold text-amber-300 mt-1.5">
-              — {motivation.author}
-            </footer>
-          </blockquote>
-
-          <p className="text-xs text-slate-300 bg-slate-800/80 rounded-xl p-3.5 leading-relaxed">
-            <strong className="text-amber-300">Today&apos;s Rule: </strong>
-            {motivation.actionableHabit}
-          </p>
-
-          {/* Well-Organized Motivation Media Section (Songs, Shorts, Quotes) */}
-          <div className="pt-3 border-t border-slate-800 space-y-2.5">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                Motivation Media Vault
-              </span>
-              <button
-                type="button"
-                onClick={() => setIsMotivationHubOpen(true)}
-                className="text-xs font-semibold text-teal-400 hover:text-teal-300 cursor-pointer"
-              >
-                View Full Hub &rarr;
-              </button>
-            </div>
-
-            <div className="grid grid-cols-3 gap-2.5">
-              <button
-                type="button"
-                onClick={() => setIsSongsOpen(true)}
-                className="min-h-[52px] rounded-xl bg-slate-800/90 hover:bg-slate-800 border border-slate-700/80 px-3 py-2.5 flex items-center gap-2.5 text-left transition-colors cursor-pointer"
-              >
-                <div className="p-2 rounded-lg bg-teal-500/15 text-teal-400 shrink-0">
-                  <Music className="w-4 h-4" />
-                </div>
-                <div className="min-w-0">
-                  <div className="text-xs font-bold text-white truncate">
-                    Songs
-                  </div>
-                  <div className="text-[11px] text-slate-400 truncate">
-                    15 Tracks
-                  </div>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setIsShortsOpen(true)}
-                className="min-h-[52px] rounded-xl bg-slate-800/90 hover:bg-slate-800 border border-slate-700/80 px-3 py-2.5 flex items-center gap-2.5 text-left transition-colors cursor-pointer"
-              >
-                <div className="p-2 rounded-lg bg-amber-500/15 text-amber-400 shrink-0">
-                  <Flame className="w-4 h-4" />
-                </div>
-                <div className="min-w-0">
-                  <div className="text-xs font-bold text-white truncate">
-                    Shorts
-                  </div>
-                  <div className="text-[11px] text-slate-400 truncate">
-                    20 Reels
-                  </div>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setIsQuotesOpen(true)}
-                className="min-h-[52px] rounded-xl bg-slate-800/90 hover:bg-slate-800 border border-slate-700/80 px-3 py-2.5 flex items-center gap-2.5 text-left transition-colors cursor-pointer"
-              >
-                <div className="p-2 rounded-lg bg-teal-500/15 text-teal-400 shrink-0">
-                  <Quote className="w-4 h-4" />
-                </div>
-                <div className="min-w-0">
-                  <div className="text-xs font-bold text-white truncate">
-                    Quotes
-                  </div>
-                  <div className="text-[11px] text-slate-400 truncate">
-                    20 Voice
-                  </div>
-                </div>
-              </button>
-            </div>
-          </div>
         </section>
 
-        {/* 2. PROGRESS GRAPH & WEEKLY ACHIEVEMENT CARD */}
+        {/* 2. MONTHLY SELF-CONTROL & HABIT PROGRESS */}
         <section className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 space-y-5">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
             <div className="flex items-center gap-3">
@@ -790,11 +762,11 @@ export default function DisciplineDashboardClient({
                 <Trophy className="w-5 h-5" />
               </div>
               <div>
-                <div className="text-xs text-slate-500">
-                  Weekly Achievement Leader (Less Masturbation)
-                </div>
                 <div className="text-base font-bold text-slate-900">
-                  {dashboard.weeklyAchievement.leaderName}
+                  Monthly Self-Control &amp; Habit Analytics
+                </div>
+                <div className="text-xs text-slate-500">
+                  Impulse control and masturbation frequency for {displayName}
                 </div>
               </div>
             </div>
@@ -809,7 +781,7 @@ export default function DisciplineDashboardClient({
                     : 'text-slate-600'
                 }`}
               >
-                Weekly Graph
+                Daily (This Week)
               </button>
               <button
                 type="button"
@@ -820,49 +792,113 @@ export default function DisciplineDashboardClient({
                     : 'text-slate-600'
                 }`}
               >
-                Monthly Graph
+                Weekly Trend (Month)
               </button>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 sm:gap-4">
+          {/* Key Stat Cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
             <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-900">
-                  Bharath CD
-                </span>
-                <span className="text-xs font-mono tabular-nums font-bold text-teal-700">
-                  {graphMode === 'weekly'
-                    ? `${cdStats.weeklyDisciplineRate}%`
-                    : `${cdStats.monthlyDisciplineRate}%`}
-                </span>
+              <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                Monthly Control Rate
               </div>
-              <div className="text-xs text-slate-600 font-mono tabular-nums mt-1">
-                {graphMode === 'weekly'
-                  ? `${cdStats.weeklyCleanDays} Clean · ${cdStats.weeklyRelapseDays} Relapsed`
-                  : `${cdStats.monthlyCleanDays} Clean · ${cdStats.monthlyRelapseDays} Relapsed`}
+              <div
+                className={`text-xl sm:text-2xl font-black font-mono tabular-nums mt-1 ${
+                  userStats.monthlyDisciplineRate >= 80
+                    ? 'text-teal-700'
+                    : userStats.monthlyDisciplineRate >= 60
+                    ? 'text-amber-700'
+                    : 'text-rose-700'
+                }`}
+              >
+                {userStats.monthlyDisciplineRate}%
+              </div>
+              <div className="text-xs text-slate-600 font-mono tabular-nums mt-0.5">
+                {userStats.monthlyCleanDays} Clean · {userStats.monthlyRelapseDays} Relapses
               </div>
             </div>
 
             <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-900">
-                  Bharath R
-                </span>
-                <span className="text-xs font-mono tabular-nums font-bold text-teal-700">
-                  {graphMode === 'weekly'
-                    ? `${brStats.weeklyDisciplineRate}%`
-                    : `${brStats.monthlyDisciplineRate}%`}
-                </span>
+              <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                Active Streak
               </div>
-              <div className="text-xs text-slate-600 font-mono tabular-nums mt-1">
-                {graphMode === 'weekly'
-                  ? `${brStats.weeklyCleanDays} Clean · ${brStats.weeklyRelapseDays} Relapsed`
-                  : `${brStats.monthlyCleanDays} Clean · ${brStats.monthlyRelapseDays} Relapsed`}
+              <div className="text-xl sm:text-2xl font-black font-mono tabular-nums text-emerald-700 mt-1">
+                {userStats.currentStreak} <span className="text-xs font-normal">Days</span>
+              </div>
+              <div className="text-xs text-slate-600 font-mono tabular-nums mt-0.5">
+                Best: {userStats.longestStreak} clean days
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+              <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                This Week Control
+              </div>
+              <div className="text-xl sm:text-2xl font-black font-mono tabular-nums text-slate-900 mt-1">
+                {userStats.weeklyDisciplineRate}%
+              </div>
+              <div className="text-xs text-slate-600 font-mono tabular-nums mt-0.5">
+                {userStats.weeklyCleanDays} Clean · {userStats.weeklyRelapseDays} Relapses
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+              <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                Avg Urge Intensity
+              </div>
+              <div className="text-xl sm:text-2xl font-black font-mono tabular-nums text-teal-800 mt-1">
+                {userStats.averageUrgeIntensity} <span className="text-xs font-normal">/ 10</span>
+              </div>
+              <div className="text-xs text-slate-600 mt-0.5">
+                Urge control resistance
               </div>
             </div>
           </div>
 
+          {/* Self-Control Progress Feedback Banner */}
+          <div
+            className={`p-3.5 rounded-xl border text-xs leading-relaxed flex items-start gap-2.5 ${
+              userStats.monthlyCleanDays === 0 && userStats.monthlyRelapseDays === 0
+                ? 'bg-slate-50 border-slate-200 text-slate-700'
+                : userStats.monthlyRelapseDays === 0
+                ? 'bg-emerald-50/90 border-emerald-300 text-emerald-950 font-medium'
+                : userStats.monthlyDisciplineRate >= 80
+                ? 'bg-teal-50/90 border-teal-300 text-teal-950 font-medium'
+                : userStats.monthlyDisciplineRate >= 60
+                ? 'bg-amber-50/90 border-amber-300 text-amber-950 font-medium'
+                : 'bg-rose-50/90 border-rose-300 text-rose-950 font-medium'
+            }`}
+          >
+            {userStats.monthlyRelapseDays === 0 ? (
+              <Trophy className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
+            ) : userStats.monthlyDisciplineRate >= 80 ? (
+              <Sparkles className="w-4 h-4 text-teal-700 shrink-0 mt-0.5" />
+            ) : (
+              <AlertTriangle className="w-4 h-4 text-rose-700 shrink-0 mt-0.5" />
+            )}
+            <div>
+              {userStats.monthlyRelapseDays === 0 && userStats.monthlyCleanDays > 0 ? (
+                <span>
+                  <strong>Flawless Impulse Control:</strong> You have 0 relapses this month across {userStats.monthlyCleanDays} clean days. You are rewiring your dopamine receptors and building supreme willpower!
+                </span>
+              ) : userStats.monthlyDisciplineRate >= 80 ? (
+                <span>
+                  <strong>Strong Self-Control:</strong> You have controlled your urges {userStats.monthlyDisciplineRate}% of the time this month ({userStats.monthlyCleanDays} clean days). Keep your phone docked outside your bed area to stay on track.
+                </span>
+              ) : userStats.monthlyDisciplineRate >= 60 ? (
+                <span>
+                  <strong>Urge Warning:</strong> You slipped {userStats.monthlyRelapseDays} times this month (Relapse rate: {userStats.monthlyRelapseRate}%). You need to see this progress and change your environment — avoid late-night solitude.
+                </span>
+              ) : (
+                <span>
+                  <strong>Time to Change:</strong> Your masturbation rate is {userStats.monthlyRelapseRate}% ({userStats.monthlyRelapseDays} relapses this month). Settle in your mind that you are capable of stopping. Reset your streak today and conquer this day.
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Bar Chart Visualization */}
           <div className="h-64 sm:h-72 w-full pt-2">
             <ResponsiveContainer width="100%" height="100%">
               {graphMode === 'weekly' ? (
@@ -889,33 +925,21 @@ export default function DisciplineDashboardClient({
                   />
                   <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '8px' }} />
                   <Bar
-                    dataKey="bharathCdClean"
-                    name="Bharath CD Clean"
+                    dataKey="clean"
+                    name="Clean (Controlled)"
                     fill="#0d9488"
                     radius={[4, 4, 0, 0]}
                   />
                   <Bar
-                    dataKey="bharathRClean"
-                    name="Bharath R Clean"
-                    fill="#334155"
-                    radius={[4, 4, 0, 0]}
-                  />
-                  <Bar
-                    dataKey="bharathCdRelapse"
-                    name="Bharath CD Relapsed"
+                    dataKey="relapse"
+                    name="Relapse (Masturbated)"
                     fill="#e11d48"
-                    radius={[4, 4, 0, 0]}
-                  />
-                  <Bar
-                    dataKey="bharathRRelapse"
-                    name="Bharath R Relapsed"
-                    fill="#fb7185"
                     radius={[4, 4, 0, 0]}
                   />
                 </BarChart>
               ) : (
                 <BarChart
-                  data={dashboard.monthlyProgress.weeklyTrend}
+                  data={monthlyTrendData}
                   margin={{ top: 8, right: 8, left: -24, bottom: 0 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
@@ -937,27 +961,15 @@ export default function DisciplineDashboardClient({
                   />
                   <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '8px' }} />
                   <Bar
-                    dataKey="bharathCdClean"
-                    name="Bharath CD Clean Days"
+                    dataKey="clean"
+                    name="Clean Days"
                     fill="#0d9488"
                     radius={[4, 4, 0, 0]}
                   />
                   <Bar
-                    dataKey="bharathRClean"
-                    name="Bharath R Clean Days"
-                    fill="#334155"
-                    radius={[4, 4, 0, 0]}
-                  />
-                  <Bar
-                    dataKey="bharathCdRelapses"
-                    name="Bharath CD Relapses"
+                    dataKey="relapse"
+                    name="Relapses"
                     fill="#e11d48"
-                    radius={[4, 4, 0, 0]}
-                  />
-                  <Bar
-                    dataKey="bharathRRelapses"
-                    name="Bharath R Relapses"
-                    fill="#fb7185"
                     radius={[4, 4, 0, 0]}
                   />
                 </BarChart>
@@ -977,19 +989,16 @@ export default function DisciplineDashboardClient({
                     className="flex items-center justify-between gap-3 p-3 rounded-xl bg-rose-50/50 border border-rose-200/80 text-xs"
                   >
                     <div className="min-w-0">
-                      <span className="font-bold text-slate-900">
-                        {item.friendName}
-                      </span>{' '}
-                      <span className="font-mono tabular-nums text-slate-500">
-                        ({item.date})
+                      <span className="font-bold text-slate-900 font-mono">
+                        {item.date}
                       </span>
                       <p className="text-rose-900 truncate mt-0.5">
-                        Reason: {item.reason}
+                        Reason: {item.reason || 'No reason specified'}
                       </p>
                     </div>
                     <button
                       type="button"
-                      onClick={() => openAttendanceFor(item.friendId, item.date)}
+                      onClick={() => openAttendance(item.date)}
                       className="min-h-[38px] inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-teal-800 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg shrink-0 cursor-pointer"
                     >
                       <Edit3 className="w-3.5 h-3.5" />
@@ -1011,7 +1020,7 @@ export default function DisciplineDashboardClient({
         <div className="grid grid-cols-6 gap-1 max-w-xl mx-auto">
           <button
             type="button"
-            onClick={() => openAttendanceFor('bharath_cd')}
+            onClick={() => openAttendance()}
             className="min-h-[46px] rounded-xl bg-teal-700 hover:bg-teal-800 text-white font-semibold text-[11px] flex flex-col items-center justify-center gap-0.5 transition-colors cursor-pointer"
           >
             <CheckSquare className="w-4 h-4" />
@@ -1070,15 +1079,14 @@ export default function DisciplineDashboardClient({
 
       {/* Attendance Modal */}
       <AttendanceModal
-        key={`${selectedFriend}-${selectedDate}-${existingRecord?.id ?? 'new'}-${existingRecord?.updatedAt ?? ''}`}
+        key={`${selectedDate}-${existingRecord?.id ?? 'new'}-${existingRecord?.updatedAt ?? ''}`}
         isOpen={isAttendanceOpen}
         onClose={() => setIsAttendanceOpen(false)}
-        selectedFriend={selectedFriend}
-        onSelectFriend={setSelectedFriend}
         selectedDate={selectedDate}
         onSelectDate={setSelectedDate}
         existingRecord={existingRecord}
         onSaved={refreshDashboard}
+        userName={displayName}
       />
 
       {/* Calendar Modal */}
@@ -1086,10 +1094,11 @@ export default function DisciplineDashboardClient({
         isOpen={isCalendarOpen}
         onClose={() => setIsCalendarOpen(false)}
         records={dashboard.records}
-        onEditDay={(friendId, dateStr) => {
+        onEditDay={(_friendId, dateStr) => {
           setIsCalendarOpen(false);
-          openAttendanceFor(friendId, dateStr);
+          openAttendance(dateStr);
         }}
+        userName={displayName}
       />
 
       {/* Organized Motivation Hub Modal (Songs, Shorts, Quotes) */}

@@ -85,45 +85,36 @@ export async function dispatchPhoneAttendanceReminder(options: {
   const motivation = getDailyMotivation();
   const todayStr = format(new Date(), 'yyyy-MM-dd');
 
-  const pendingFriends: string[] = [];
-  if (!config.todayStatus.bharathCdMarked) {
-    pendingFriends.push('Bharath CD');
-  }
-  if (!config.todayStatus.bharathRMarked) {
-    pendingFriends.push('Bharath R');
-  }
+  const isMarked =
+    config.todayStatus.userMarked ||
+    (config.todayStatus.bharathCdMarked && config.todayStatus.bharathRMarked);
 
-  if (!options.forceManual && pendingFriends.length === 0) {
+  if (!options.forceManual && isMarked) {
     return {
       dispatched: false,
-      targetFriends: 'None (Both Marked)',
+      targetFriends: 'Already Marked',
       channelsUsed: [],
-      messageText: 'Both Bharath CD and Bharath R have already marked attendance for today.',
-      details: 'No 8:00 PM reminder needed because both friends already logged today.',
+      messageText: 'Daily attendance has already been marked for today.',
+      details: 'No 8:00 PM reminder needed because attendance is already logged today.',
     };
   }
 
-  const targetLabel =
-    pendingFriends.length > 0
-      ? pendingFriends.join(' & ')
-      : 'Bharath CD & Bharath R';
-
-  const cdStreak = dashboard.stats.bharath_cd.currentStreak;
-  const brStreak = dashboard.stats.bharath_r.currentStreak;
+  const targetLabel = 'Discipline Practitioner';
+  const uStreak = dashboard.userStats.currentStreak;
 
   const appUrl =
     process.env.APP_URL && process.env.APP_URL !== 'MY_APP_URL'
       ? process.env.APP_URL
       : 'http://localhost:3000';
 
-  const messageText = `8:00 PM Attendance Check-In (${todayStr}): ${targetLabel}, update your daily self-control attendance now! Streaks: Bharath CD (${cdStreak}d) | Bharath R (${brStreak}d). Daily Motivation: "${motivation.quote}" — ${motivation.author}. Log here: ${appUrl}/#check-in`;
+  const messageText = `8:00 PM Attendance Check-In (${todayStr}): Time to log your daily self-control attendance! Active Streak: ${uStreak} clean days. Log here: ${appUrl}/#check-in`;
 
   const channelsUsed: string[] = [];
 
   // Channel 1: Instant Mobile Push via ntfy.sh
   const ntfyOk = await sendNtfyMobilePush(
     config.ntfyTopic,
-    '8:00 PM Attendance Reminder — Bharath CD & Bharath R',
+    '8:00 PM Attendance Reminder — BeyondLimits',
     messageText,
     appUrl
   );

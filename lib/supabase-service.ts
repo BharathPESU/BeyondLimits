@@ -150,7 +150,7 @@ export async function recordWorkoutSession(
  * Synchronize attendance log to Supabase in the background.
  */
 export async function syncAttendanceToSupabase(params: {
-  friendId: 'bharath_cd' | 'bharath_r';
+  friendId?: string;
   date: string;
   relapsed: boolean;
   reason: string;
@@ -160,9 +160,9 @@ export async function syncAttendanceToSupabase(params: {
   controlNote: string;
 }) {
   const userId =
-    params.friendId === 'bharath_cd'
-      ? 'a0000000-0000-0000-0000-000000000001'
-      : 'a0000000-0000-0000-0000-000000000002';
+    params.friendId === 'bharath_r'
+      ? 'a0000000-0000-0000-0000-000000000002'
+      : 'a0000000-0000-0000-0000-000000000001';
 
   try {
     await supabase.from('attendance_logs').upsert(

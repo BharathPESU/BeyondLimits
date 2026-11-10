@@ -100,6 +100,7 @@ export default function UserProfileModal({
     // Save to localStorage immediately
     try {
       localStorage.setItem('beyondlimits_user_profile', JSON.stringify(profileData));
+      window.dispatchEvent(new CustomEvent('user_profile_updated', { detail: profileData }));
     } catch {}
 
     // Save to Clerk user metadata
@@ -241,7 +242,7 @@ export default function UserProfileModal({
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Bharath CD"
+              placeholder="e.g. Alex Hunter"
               className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 focus:border-teal-600 focus:bg-white rounded-xl text-sm text-slate-900 placeholder-slate-400 outline-none transition-all"
             />
           </div>

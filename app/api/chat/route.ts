@@ -5,7 +5,7 @@ import { getDashboardPayload } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
-const MOTIVATIONAL_COACH_SYSTEM_PROMPT = `You are the Iron-Will Brotherhood Mentor & Discipline Coach for Bharath CD and Bharath R.
+const MOTIVATIONAL_COACH_SYSTEM_PROMPT = `You are the Iron-Will Discipline Coach & Personal Self-Mastery Mentor.
 Core Directive:
 1. Every single time the user asks ANY question, shares a thought, or talks to you, answer their question directly AND forcefully connect it back to self-discipline, emotional control, zero masturbation/relapses, and relentless ambition.
 2. Speak in a strong, commanding, stoic brotherly voice suitable for direct text-to-speech playback.
@@ -70,8 +70,7 @@ export async function POST(request: NextRequest) {
     const serverApiKey = process.env.GEMINI_API_KEY?.trim();
 
     const dashboard = getDashboardPayload();
-    const cdStats = dashboard.stats.bharath_cd;
-    const brStats = dashboard.stats.bharath_r;
+    const uStats = dashboard.userStats;
 
     const recentHistoryText = history
       .slice(-4)
@@ -79,9 +78,9 @@ export async function POST(request: NextRequest) {
       .join('\n');
 
     const prompt = `Live Accountability Context:
-- Bharath CD Streak: ${cdStats.currentStreak} clean days (${cdStats.weeklyCleanDays} clean this week)
-- Bharath R Streak: ${brStats.currentStreak} clean days (${brStats.weeklyCleanDays} clean this week)
-- Weekly Leader: ${dashboard.weeklyAchievement.leaderName}
+- Current Clean Streak: ${uStats.currentStreak} clean days (${uStats.weeklyCleanDays} clean this week)
+- Monthly Self-Control Rate: ${uStats.monthlyDisciplineRate}% (${uStats.monthlyCleanDays} clean days, ${uStats.monthlyRelapseDays} relapses this month)
+- Longest Streak: ${uStats.longestStreak} clean days
 
 ${recentHistoryText ? `Recent Conversation:\n${recentHistoryText}\n\n` : ''}User's New Question / Statement: "${message}"
 

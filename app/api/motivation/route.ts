@@ -91,8 +91,7 @@ export async function POST(request: NextRequest) {
       : 'Self-Discipline, Impulse Control & High-Achiever Success';
 
     const dashboard = getDashboardPayload();
-    const cdStats = dashboard.stats.bharath_cd;
-    const brStats = dashboard.stats.bharath_r;
+    const uStats = dashboard.userStats;
     const todayStr = format(new Date(), 'yyyy-MM-dd');
 
     const searchQuery =
@@ -148,19 +147,18 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    const prompt = `You are an elite performance, stoic discipline, and neuroscience coach for two close accountability partners: "Bharath CD" and "Bharath R".
-They have made a strict pact to eliminate masturbation/relapses, control their emotions, and channel their energy into career and personal success.
+    const prompt = `You are an elite performance, stoic discipline, and neuroscience coach for an individual self-mastery practitioner.
+They have made a strict commitment to eliminate masturbation/relapses, master their impulses, and channel their energy into ambitious goals.
 
-Current Live SQLite Progress Context:
-- Bharath CD: ${cdStats.currentStreak}-day clean streak, ${cdStats.weeklyCleanDays} clean days this week (${cdStats.weeklyRelapseDays} relapses), ${cdStats.disciplineRate}% all-time discipline.
-- Bharath R: ${brStats.currentStreak}-day clean streak, ${brStats.weeklyCleanDays} clean days this week (${brStats.weeklyRelapseDays} relapses), ${brStats.disciplineRate}% all-time discipline.
-- Current Weekly Leader: ${dashboard.weeklyAchievement.leaderName}.
+Current Live Progress Context:
+- Current Clean Streak: ${uStats.currentStreak}-day clean streak (${uStats.weeklyCleanDays} clean days this week, ${uStats.weeklyRelapseDays} relapses).
+- Monthly Self-Control Rate: ${uStats.monthlyDisciplineRate}% (${uStats.monthlyCleanDays} clean days vs ${uStats.monthlyRelapseDays} relapses).
 - Requested Focus Theme: ${focusTheme}
 
 Web Search Context (from Tavily / Curated Research):
 ${webContextText}
 
-Generate a high-impact daily motivation briefing in JSON format for today (${todayStr}) that inspires both Bharath CD and Bharath R to stay 100% clean today and mark their attendance at 8:00 PM tonight.`;
+Generate a high-impact daily motivation briefing in JSON format for today (${todayStr}) that inspires the practitioner to stay 100% clean today and mark their daily attendance.`;
 
     const response = await ai.models.generateContent({
       model: 'gemini-3.8-flash',
@@ -189,7 +187,7 @@ Generate a high-impact daily motivation briefing in JSON format for today (${tod
             actionableHabit: {
               type: Type.STRING,
               description:
-                'One concrete physical or mental rule for Bharath CD and Bharath R to execute today when an urge or emotional trigger appears.',
+                'One concrete physical or mental rule for the user to execute today when an urge or emotional trigger appears.',
             },
             neuroscienceInsight: {
               type: Type.STRING,

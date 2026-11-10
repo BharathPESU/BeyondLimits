@@ -24,6 +24,7 @@ import {
   PhoneReminderConfig,
   ReminderLogEntry,
   TechNewsItem,
+  UserProgressStats,
   WeeklyAchievementComparison,
 } from './types';
 
@@ -453,7 +454,7 @@ function createInitialSeedState(): StoredSchemaState {
     actionableHabit:
       'At 8:00 PM tonight, check in your clean attendance, dock your phone outside the bed area by 10:30 PM, and replace late-night scrolling with 15 minutes of reading or planning tomorrow.',
     neuroscienceInsight:
-      'Every time Bharath CD and Bharath R override a sudden impulse, the anterior mid-cingulate cortex (the brain’s willpower hub) physically grows stronger, making long-term career and academic focus effortless.',
+      'Every time you override a sudden impulse, the anterior mid-cingulate cortex (the brain’s willpower hub) physically grows stronger, making long-term career and academic focus effortless.',
     searchQuery: 'scientific habits self discipline dopamine mastery success motivation',
     sources: defaultSources,
     generatedBy: 'Daily Discipline Briefing (Tap Refresh for Live Tavily + Gemini Search)',
@@ -1011,9 +1012,161 @@ export function getDashboardPayload(referenceDateStr?: string): DashboardPayload
     triggerBreakdown,
   };
 
+  // Build unified individual user stats & habit tracking timeline
+  const userDailyMap = new Map<string, AttendanceRecord>();
+  for (const r of records) {
+    const existing = userDailyMap.get(r.date);
+    if (!existing) {
+      userDailyMap.set(r.date, r);
+    } else if (r.friendId === 'user') {
+      userDailyMap.set(r.date, r);
+    } else if (existing.friendId !== 'user' && r.friendId === 'bharath_cd') {
+      userDailyMap.set(r.date, r);
+    }
+  }
+
+  const userRecordsDesc = Array.from(userDailyMap.values()).sort((a, b) =>
+    b.date.localeCompare(a.date)
+  );
+  const userRecordsAsc = [...userRecordsDesc].sort((a, b) =>
+    a.date.localeCompare(b.date)
+  );
+
+  const userTotalMarked = userRecordsDesc.length;
+  const userCleanDays = userRecordsDesc.filter((r) => !r.relapsed).length;
+  const userRelapseDays = userRecordsDesc.filter((r) => r.relapsed).length;
+  const userDisciplineRate =
+    userTotalMarked > 0 ? Math.round((userCleanDays / userTotalMarked) * 100) : 100;
+  const userRelapseRate =
+    userTotalMarked > 0 ? Math.round((userRelapseDays / userTotalMarked) * 100) : 0;
+
+  // Streak calculations
+  let userCurrentStreak = 0;
+  for (let i = userRecordsAsc.length - 1; i >= 0; i--) {
+    if (!userRecordsAsc[i].relapsed) {
+      userCurrentStreak++;
+    } else {
+      break;
+    }
+  }
+
+  let userLongestStreak = 0;
+  let userTempStreak = 0;
+  for (const rec of userRecordsAsc) {
+    if (!rec.relapsed) {
+      userTempStreak++;
+      if (userTempStreak > userLongestStreak) userLongestStreak = userTempStreak;
+    } else {
+      userTempStreak = 0;
+    }
+  }
+
+  // Weekly user stats
+  const userWeeklyRecords = userRecordsDesc.filter(
+    (r) => r.date >= weekStart && r.date <= weekEnd
+  );
+  const userWeeklyClean = userWeeklyRecords.filter((r) => !r.relapsed).length;
+  const userWeeklyRelapse = userWeeklyRecords.filter((r) => r.relapsed).length;
+  const userWeeklyMarked = userWeeklyRecords.length;
+  const userWeeklyRate =
+    userWeeklyMarked > 0 ? Math.round((userWeeklyClean / userWeeklyMarked) * 100) : 100;
+
+  // Monthly user stats
+  const userMonthlyRecords = userRecordsDesc.filter(
+    (r) => r.date >= monthStart && r.date <= monthEnd
+  );
+  const userMonthlyClean = userMonthlyRecords.filter((r) => !r.relapsed).length;
+  const userMonthlyRelapse = userMonthlyRecords.filter((r) => r.relapsed).length;
+  const userMonthlyMarked = userMonthlyRecords.length;
+  const userMonthlyRate =
+    userMonthlyMarked > 0
+      ? Math.round((userMonthlyClean / userMonthlyMarked) * 100)
+      : 100;
+  const userMonthlyRelapseRate =
+    userMonthlyMarked > 0
+      ? Math.round((userMonthlyRelapse / userMonthlyMarked) * 100)
+      : 0;
+
+  const totalUrge = userRecordsDesc.reduce(
+    (sum, r) => sum + (r.urgeIntensity || 2),
+    0
+  );
+  const userAvgUrge =
+    userTotalMarked > 0 ? Number((totalUrge / userTotalMarked).toFixed(1)) : 2;
+
+  // Daily breakdown for the current week (Mon-Sun)
+  const userDailyBreakdown = weekDays.map((dayObj) => {
+    const dStr = format(dayObj, 'yyyy-MM-dd');
+    const rec = userDailyMap.get(dStr);
+    return {
+      date: dStr,
+      dayName: format(dayObj, 'EEE, MMM d'),
+      status: rec
+        ? rec.relapsed
+          ? ('relapsed' as const)
+          : ('clean' as const)
+        : ('unmarked' as const),
+      reason: rec?.reason || '',
+    };
+  });
+
+  // Weekly trend for 4 weeks (to show progress across the month)
+  const userWeeklyTrend: UserProgressStats['weeklyTrend'] = [];
+  for (let i = 3; i >= 0; i--) {
+    const wStart = startOfWeek(subDays(refDate, i * 7), { weekStartsOn: 1 });
+    const wEnd = addDays(wStart, 6);
+    const wStartStr = format(wStart, 'yyyy-MM-dd');
+    const wEndStr = format(wEnd, 'yyyy-MM-dd');
+
+    const inWeek = userRecordsDesc.filter(
+      (r) => r.date >= wStartStr && r.date <= wEndStr
+    );
+    const cleanInWeek = inWeek.filter((r) => !r.relapsed).length;
+    const relapseInWeek = inWeek.filter((r) => r.relapsed).length;
+    const totalInWeek = inWeek.length;
+    const rateInWeek =
+      totalInWeek > 0 ? Math.round((cleanInWeek / totalInWeek) * 100) : 100;
+
+    userWeeklyTrend.push({
+      weekLabel: format(wStart, 'MMM d'),
+      cleanDays: cleanInWeek,
+      relapseDays: relapseInWeek,
+      disciplineRate: rateInWeek,
+    });
+  }
+
+  const userStats: UserProgressStats = {
+    userId: 'user',
+    userName: 'You',
+    totalMarkedDays: userTotalMarked,
+    cleanDays: userCleanDays,
+    relapseDays: userRelapseDays,
+    disciplineRate: userDisciplineRate,
+    relapseRate: userRelapseRate,
+    currentStreak: userCurrentStreak,
+    longestStreak: userLongestStreak,
+    weeklyCleanDays: userWeeklyClean,
+    weeklyRelapseDays: userWeeklyRelapse,
+    weeklyMarkedDays: userWeeklyMarked,
+    weeklyDisciplineRate: userWeeklyRate,
+    monthlyCleanDays: userMonthlyClean,
+    monthlyRelapseDays: userMonthlyRelapse,
+    monthlyMarkedDays: userMonthlyMarked,
+    monthlyDisciplineRate: userMonthlyRate,
+    monthlyRelapseRate: userMonthlyRelapseRate,
+    averageUrgeIntensity: userAvgUrge,
+    dailyBreakdown: userDailyBreakdown,
+    weeklyTrend: userWeeklyTrend,
+  };
+
   const dailyMotivation = getDailyMotivation(format(refDate, 'yyyy-MM-dd'));
   const dailyTechNews = getDailyTechNews(format(refDate, 'yyyy-MM-dd'));
   const reminderConfig = getReminderConfig();
+  if (reminderConfig?.todayStatus) {
+    reminderConfig.todayStatus.userMarked = userRecordsDesc.some(
+      (r) => r.date === format(refDate, 'yyyy-MM-dd')
+    );
+  }
 
   const tavilyConfigured = Boolean(
     process.env.TAVILY_API_KEY &&
@@ -1029,6 +1182,7 @@ export function getDashboardPayload(referenceDateStr?: string): DashboardPayload
   return {
     friends: friendRows,
     stats,
+    userStats,
     weeklyAchievement,
     monthlyProgress,
     records,
@@ -1050,7 +1204,8 @@ export function getDashboardPayload(referenceDateStr?: string): DashboardPayload
 }
 
 export interface UpsertAttendanceInput {
-  friendId: FriendId;
+  friendId?: string;
+  friendName?: string;
   date: string;
   relapsed: boolean;
   reason?: string;
@@ -1085,18 +1240,30 @@ export function upsertAttendanceRecord(
     Math.max(1, Number(input.urgeIntensity ?? (input.relapsed ? 7 : 2)))
   );
 
-  const friendName =
-    input.friendId === 'bharath_cd' ? 'Bharath CD' : 'Bharath R';
+  const targetFriendId = (input.friendId || 'user').trim();
+  const targetFriendName = (
+    input.friendName ||
+    (targetFriendId === 'bharath_cd'
+      ? 'Bharath CD'
+      : targetFriendId === 'bharath_r'
+      ? 'Bharath R'
+      : 'You')
+  ).trim();
   const nowIso = new Date().toISOString();
 
   const existingIdx = store.attendanceLogs.findIndex(
-    (r) => r.friendId === input.friendId && r.date === input.date
+    (r) =>
+      (r.friendId === targetFriendId ||
+        (targetFriendId === 'user' && r.friendId === 'bharath_cd')) &&
+      r.date === input.date
   );
 
   let savedRecord: AttendanceRecord;
   if (existingIdx >= 0) {
     savedRecord = {
       ...store.attendanceLogs[existingIdx],
+      friendId: targetFriendId,
+      friendName: targetFriendName,
       relapsed: input.relapsed,
       reason: cleanReason,
       triggerCategory,
@@ -1109,8 +1276,8 @@ export function upsertAttendanceRecord(
   } else {
     savedRecord = {
       id: store.nextAttendanceId++,
-      friendId: input.friendId,
-      friendName,
+      friendId: targetFriendId,
+      friendName: targetFriendName,
       date: input.date,
       relapsed: input.relapsed,
       reason: cleanReason,
