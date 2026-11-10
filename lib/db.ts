@@ -1354,12 +1354,15 @@ export function getDailyTechNews(dateStr?: string): DailyTechNewsRecord {
 
   return saveDailyTechNews({
     date: targetDate,
-    scheduledTime: '07:00',
+    scheduledTime: '08:00',
     items: DEFAULT_TECH_NEWS_ITEMS,
     searchQuery:
-      'top 5 latest artificial intelligence and technology news breakthroughs today',
+      'top 5 latest technology and breaking news breakthroughs today',
+    category: 'technology',
+    language: 'en',
+    country: 'all',
     generatedBy:
-      '7:00 AM Scheduled Briefing (Tap Refresh for Live Tavily Search)',
+      '8:00 AM Scheduled Briefing (NewsData.io)',
   });
 }
 
@@ -1370,9 +1373,12 @@ export function saveDailyTechNews(
 
   const saved: DailyTechNewsRecord = {
     date: record.date,
-    scheduledTime: record.scheduledTime || '07:00',
+    scheduledTime: record.scheduledTime || '08:00',
     items: (record.items || DEFAULT_TECH_NEWS_ITEMS).slice(0, 5),
     searchQuery: record.searchQuery,
+    category: record.category || 'technology',
+    language: record.language || 'en',
+    country: record.country || 'all',
     generatedBy: record.generatedBy,
     updatedAt: new Date().toISOString(),
   };

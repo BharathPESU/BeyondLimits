@@ -107,13 +107,12 @@ export default function DisciplineDashboardClient({
   const [isProfileModalOpen, setIsProfileModalOpen] = useState<boolean>(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState<boolean>(false);
 
-  // Daily 7:00 AM AI & Tech News state
+  // Daily 8:00 AM Top 5 News state (NewsData.io)
   const [newsRecord, setNewsRecord] = useState<DailyTechNewsRecord | null>(
     initialData.dailyTechNews ?? null
   );
   const [loadingNews, setLoadingNews] = useState<boolean>(false);
-  const newsRefreshIndexRef = useRef<number>(0);
-  const auto7AmNewsDateRef = useRef<string>('');
+  const auto8AmNewsDateRef = useRef<string>('');
 
   const [selectedFriend, setSelectedFriend] = useState<FriendId>('user');
   const [selectedDate, setSelectedDate] = useState<string>(() =>
@@ -165,27 +164,37 @@ export default function DisciplineDashboardClient({
     }
   }, []);
 
-  const handleRefreshLiveNews = useCallback(async () => {
-    setLoadingNews(true);
-    try {
-      newsRefreshIndexRef.current += 1;
-      const res = await fetch('/api/news', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refreshIndex: newsRefreshIndexRef.current }),
-      });
-      if (res.ok) {
-        const data = (await res.json()) as { news?: DailyTechNewsRecord };
-        if (data.news) {
-          setNewsRecord(data.news);
+  const handleRefreshLiveNews = useCallback(
+    async (filters?: {
+      category?: string;
+      language?: string;
+      country?: string;
+    }) => {
+      setLoadingNews(true);
+      try {
+        const res = await fetch('/api/news', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            category: filters?.category || 'technology',
+            language: filters?.language || 'all',
+            country: filters?.country || 'all',
+          }),
+        });
+        if (res.ok) {
+          const data = (await res.json()) as { news?: DailyTechNewsRecord };
+          if (data.news) {
+            setNewsRecord(data.news);
+          }
         }
+      } finally {
+        setLoadingNews(false);
       }
-    } finally {
-      setLoadingNews(false);
-    }
-  }, []);
+    },
+    []
+  );
 
-  // Daily 7:00 AM (07:00) AI & Tech News auto-fetch + 8:00 PM (20:00) phone attendance reminder
+  // Daily 8:00 AM (08:00) News auto-fetch + 8:00 PM (20:00) phone attendance reminder
   useEffect(() => {
     const checkScheduledTasks = async () => {
       const now = new Date();
@@ -194,9 +203,9 @@ export default function DisciplineDashboardClient({
       const hhmm = `${hh}:${mm}`;
       const todayStr = now.toISOString().slice(0, 10);
 
-      // 1. Daily 7:00 AM AI & Tech News refresh
-      if (hhmm === '07:00' && auto7AmNewsDateRef.current !== todayStr) {
-        auto7AmNewsDateRef.current = todayStr;
+      // 1. Daily 8:00 AM Top 5 News refresh
+      if (hhmm === '08:00' && auto8AmNewsDateRef.current !== todayStr) {
+        auto8AmNewsDateRef.current = todayStr;
         await handleRefreshLiveNews();
       }
 
@@ -1145,7 +1154,7 @@ export default function DisciplineDashboardClient({
         isSpeaking={isSpeaking}
       />
 
-      {/* Daily 7:00 AM Top 5 AI & Tech News Modal */}
+      {/* Daily 8:00 AM Top 5 News Modal (NewsData.io) */}
       <NewsModal
         isOpen={isNewsOpen}
         onClose={() => setIsNewsOpen(false)}

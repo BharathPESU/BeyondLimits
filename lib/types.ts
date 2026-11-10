@@ -217,13 +217,19 @@ export interface TechNewsItem {
   source: string;
   url: string;
   publishedAt: string;
+  imageUrl?: string;
+  language?: string;
+  country?: string;
 }
 
 export interface DailyTechNewsRecord {
   date: string;
-  scheduledTime: string; // "07:00"
+  scheduledTime: string; // "08:00"
   items: TechNewsItem[];
   searchQuery: string;
+  category?: string;
+  language?: string;
+  country?: string;
   generatedBy: string;
   updatedAt: string;
 }
