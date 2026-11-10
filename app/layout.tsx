@@ -30,6 +30,7 @@ export const metadata: Metadata = {
   title: 'BeyondLimits — Discipline & Workout Tracker',
   description:
     'Strict daily self-control attendance, relapse reason logging, weekly achievement leaderboard, and monthly progress analytics.',
+  manifest: '/manifest.webmanifest',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
@@ -70,7 +71,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={`${plusJakarta.variable} ${jetbrainsMono.variable}`}>
       <head>
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-touch-fullscreen" content="yes" />
+        <meta name="theme-color" content="#060913" />
+        <meta name="msapplication-navbutton-color" content="#060913" />
+        <meta name="msapplication-starturl" content="/?source=pwa" />
+        <link rel="manifest" href="/manifest.webmanifest" />
+        <link rel="manifest" href="/manifest.json" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         <Script src="https://js.puter.com/v2/" strategy="beforeInteractive" />
       </head>
       <body

@@ -1,7 +1,8 @@
-const CACHE_NAME = 'beyondlimits-pwa-v2';
+const CACHE_NAME = 'beyondlimits-pwa-v3';
 const STATIC_ASSETS = [
   '/',
   '/manifest.webmanifest',
+  '/manifest.json',
   '/icon.png',
   '/pwa-192x192.png',
   '/pwa-512x512.png',

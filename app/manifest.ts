@@ -9,12 +9,10 @@ export default function manifest(): MetadataRoute.Manifest {
       'Daily motivation with strong voice, personal habit and relapse progress analytics, and 12-exercise home workout for your discipline journey.',
     start_url: '/?source=pwa',
     scope: '/',
-    display: 'standalone',
+    display: 'fullscreen',
     display_override: [
-      'window-controls-overlay',
       'fullscreen',
       'standalone',
-      'minimal-ui',
     ],
     orientation: 'portrait',
     background_color: '#060913',
