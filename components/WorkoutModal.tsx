@@ -24,6 +24,7 @@ import {
   Dumbbell,
   Maximize2,
   ArrowRight,
+  ArrowLeft,
   Music,
 } from 'lucide-react';
 import {
@@ -393,13 +394,19 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
       aria-modal="true"
       aria-labelledby="workout-feature-title"
     >
-      {/* ========================================================================= */}
-      {/* SHARED FULL-SCREEN LIGHT HEADER (Consistent with Calendar & Motivation Hub) */}
-      {/* ========================================================================= */}
-      <header className="bg-white border-b border-slate-200 px-4 sm:px-6 py-3.5 shrink-0">
-        <div className="max-w-6xl w-full mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl overflow-hidden bg-black p-1 border border-slate-800 shrink-0 shadow-sm">
+      {/* Full-Screen Light Header with Safe Area & Left Back Arrow */}
+      <header className="bg-white border-b border-slate-200 px-4 sm:px-6 pt-[max(env(safe-area-inset-top),16px)] pb-3 shrink-0">
+        <div className="max-w-6xl w-full mx-auto flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <button
+              type="button"
+              onClick={handleClose}
+              aria-label="Back to dashboard"
+              className="min-h-[40px] min-w-[40px] -ml-2 inline-flex items-center justify-center rounded-xl text-slate-700 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl overflow-hidden bg-black p-1 border border-slate-800 shrink-0 shadow-sm hidden xs:block">
               <Image
                 src="/logo.png"
                 alt="BeyondLimits Logo"
@@ -461,15 +468,6 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
               title={isMuted ? 'Unmute voice coaching' : 'Mute voice coaching'}
             >
               {isMuted ? <VolumeX className="w-5 h-5 text-red-500" /> : <Volume2 className="w-5 h-5 text-teal-700" />}
-            </button>
-
-            <button
-              type="button"
-              onClick={handleClose}
-              aria-label="Close workout modal"
-              className="min-h-[40px] min-w-[40px] inline-flex items-center justify-center rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer border border-slate-200"
-            >
-              <X className="w-5 h-5" />
             </button>
           </div>
         </div>

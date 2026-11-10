@@ -1107,26 +1107,29 @@ export default function DisciplineDashboardClient({
               </SignUpButton>
             </Show>
             <Show when="signed-in">
-              <UserButton
-                appearance={{
-                  elements: {
-                    userButtonAvatarBox: 'w-8 h-8 sm:w-9 sm:h-9 ring-2 ring-teal-600/30 hover:ring-teal-500 transition-all cursor-pointer',
-                  },
-                }}
-              >
-                <UserButton.MenuItems>
-                  <UserButton.Action
-                    label="My Profile"
-                    labelIcon={<User className="w-4 h-4 text-teal-600" />}
-                    onClick={() => setIsProfileModalOpen(true)}
-                  />
-                  <UserButton.Action
-                    label="AI & Gemini Settings"
-                    labelIcon={<Settings className="w-4 h-4 text-teal-600" />}
-                    onClick={() => setIsSettingsModalOpen(true)}
-                  />
-                </UserButton.MenuItems>
-              </UserButton>
+              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full ring-2 ring-teal-600/40 hover:ring-teal-500 shadow-sm transition-all cursor-pointer flex items-center justify-center shrink-0 overflow-hidden">
+                <UserButton
+                  appearance={{
+                    elements: {
+                      userButtonAvatarBox: 'w-8 h-8 sm:w-9 sm:h-9 rounded-full',
+                      userButtonTrigger: 'focus:shadow-none focus:outline-none',
+                    },
+                  }}
+                >
+                  <UserButton.MenuItems>
+                    <UserButton.Action
+                      label="My Profile"
+                      labelIcon={<User className="w-4 h-4 text-teal-600" />}
+                      onClick={() => setIsProfileModalOpen(true)}
+                    />
+                    <UserButton.Action
+                      label="AI & Gemini Settings"
+                      labelIcon={<Settings className="w-4 h-4 text-teal-600" />}
+                      onClick={() => setIsSettingsModalOpen(true)}
+                    />
+                  </UserButton.MenuItems>
+                </UserButton>
+              </div>
             </Show>
             <PWAInstallButton />
           </div>

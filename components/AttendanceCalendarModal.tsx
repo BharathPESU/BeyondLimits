@@ -16,6 +16,7 @@ import {
   Calendar as CalendarIcon,
   ChevronLeft,
   ChevronRight,
+  ArrowLeft,
   X,
   ShieldCheck,
   AlertTriangle,
@@ -142,30 +143,25 @@ export default function AttendanceCalendarModal({
       role="dialog"
       aria-modal="true"
     >
-      {/* Full-Screen Sticky Header */}
-      <div className="bg-white border-b border-slate-200 px-4 sm:px-6 py-4 shrink-0">
-        <div className="max-w-4xl w-full mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-teal-50 text-teal-700">
-              <CalendarIcon className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="text-lg font-bold text-slate-900">
-                Self-Control Attendance Calendar
-              </h2>
-              <p className="text-xs text-slate-500">
-                Tracking monthly habit consistency &amp; impulse control for {displayName}
-              </p>
-            </div>
-          </div>
-
+      {/* Full-Screen Sticky Header with Safe Area & Left Back Arrow */}
+      <div className="bg-white border-b border-slate-200 px-4 sm:px-6 pt-[max(env(safe-area-inset-top),16px)] pb-3.5 shrink-0">
+        <div className="max-w-4xl w-full mx-auto flex items-center gap-3">
           <button
             type="button"
             onClick={onClose}
-            className="min-h-[42px] min-w-[42px] flex items-center justify-center rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 cursor-pointer"
+            className="min-h-[40px] min-w-[40px] -ml-2 flex items-center justify-center rounded-xl text-slate-700 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer"
+            aria-label="Back to dashboard"
           >
-            <X className="w-5 h-5" />
+            <ArrowLeft className="w-5 h-5" />
           </button>
+          <div>
+            <h2 className="text-base sm:text-lg font-bold text-slate-900 leading-tight">
+              Self-Control Attendance Calendar
+            </h2>
+            <p className="text-[11px] sm:text-xs text-slate-500">
+              Tracking monthly habit consistency &amp; impulse control for {displayName}
+            </p>
+          </div>
         </div>
       </div>
 

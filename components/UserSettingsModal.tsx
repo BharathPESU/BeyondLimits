@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useUser } from '@clerk/nextjs';
 import {
   X,
+  ArrowLeft,
   Key,
   ExternalLink,
   CheckCircle2,
@@ -410,43 +411,40 @@ export default function UserSettingsModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto"
+      className="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-3 sm:p-6 bg-slate-900/60 backdrop-blur-sm overflow-y-auto pt-[max(env(safe-area-inset-top),20px)] pb-12"
       role="dialog"
       aria-modal="true"
     >
       <div
-        className="w-full max-w-lg bg-white border border-slate-200 rounded-3xl p-5 sm:p-7 shadow-2xl space-y-6 my-8 text-slate-900"
+        className="w-full max-w-lg bg-white border border-slate-200 rounded-3xl p-5 sm:p-7 shadow-2xl space-y-6 my-auto sm:my-8 text-slate-900"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Modal Header */}
-        <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-          <div className="flex items-center gap-3">
-            <div className="p-3 rounded-2xl bg-teal-50 text-teal-700 border border-teal-200/60 shrink-0">
-              <Key className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">
-                  AI &amp; Jarvis Settings
-                </h3>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-50 text-teal-700 border border-teal-200/60">
-                  Multi-Key
-                </span>
-              </div>
-              <p className="text-xs text-slate-500">
-                Round-robin keys, voice configuration &amp; biometric lock
-              </p>
-            </div>
-          </div>
-
+        {/* Modal Header with Left Back Arrow */}
+        <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
           <button
             type="button"
             onClick={onClose}
-            className="min-h-[42px] min-w-[42px] flex items-center justify-center rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
-            aria-label="Close Settings"
+            className="min-h-[40px] min-w-[40px] -ml-1 flex items-center justify-center rounded-xl text-slate-700 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer"
+            aria-label="Back to dashboard"
           >
-            <X className="w-5 h-5" />
+            <ArrowLeft className="w-5 h-5" />
           </button>
+          <div className="p-2.5 rounded-2xl bg-teal-50 text-teal-700 border border-teal-200/60 shrink-0">
+            <Key className="w-5 h-5" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <h3 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">
+                AI &amp; Jarvis Settings
+              </h3>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-50 text-teal-700 border border-teal-200/60">
+                Multi-Key
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 truncate">
+              Round-robin keys, voice configuration &amp; biometric lock
+            </p>
+          </div>
         </div>
 
         {/* Status Toast */}

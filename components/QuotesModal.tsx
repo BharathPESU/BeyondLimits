@@ -7,6 +7,7 @@ import {
   Square,
   Play,
   SkipForward,
+  ArrowLeft,
   X,
 } from 'lucide-react';
 import { MOTIVATIONAL_QUOTES } from '@/lib/motivation-media-data';
@@ -76,9 +77,17 @@ export default function QuotesModal({
       role="dialog"
       aria-modal="true"
     >
-      {/* Full-Screen Light Header */}
-      <div className="bg-white border-b border-slate-200 px-4 sm:px-6 py-4 shrink-0">
-        <div className="max-w-4xl w-full mx-auto flex items-center justify-between">
+      {/* Full-Screen Light Header with Safe Area & Left Back Arrow */}
+      <div className="bg-white border-b border-slate-200 px-4 sm:px-6 pt-[max(env(safe-area-inset-top),16px)] pb-3.5 shrink-0">
+        <div className="max-w-4xl w-full mx-auto flex items-center gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className="min-h-[40px] min-w-[40px] -ml-2 flex items-center justify-center rounded-xl text-slate-700 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer"
+            aria-label="Back to Motivation Hub"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
           <div className="flex items-center gap-2.5">
             <div className="p-2 rounded-xl bg-teal-50 text-teal-700">
               <Quote className="w-5 h-5" />
@@ -89,14 +98,6 @@ export default function QuotesModal({
               </h2>
             </div>
           </div>
-
-          <button
-            type="button"
-            onClick={onClose}
-            className="min-h-[42px] min-w-[42px] flex items-center justify-center rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
         </div>
       </div>
 

@@ -7,6 +7,7 @@ import {
   ChevronDown,
   List,
   RefreshCw,
+  ArrowLeft,
   X,
 } from 'lucide-react';
 import {
@@ -123,13 +124,23 @@ export default function ShortsModal({
         className="relative w-full h-full sm:w-[410px] sm:h-[88vh] sm:rounded-3xl bg-slate-950 text-white border border-slate-800 overflow-hidden flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Top Floating Reels Header */}
-        <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 py-3 bg-gradient-to-b from-black/80 via-black/40 to-transparent">
+        {/* Top Floating Reels Header with Safe Area & Left Back Arrow */}
+        <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-3 pt-[max(env(safe-area-inset-top),14px)] pb-3 bg-gradient-to-b from-black/80 via-black/40 to-transparent">
           <div className="flex items-center gap-2">
-            <Flame className="w-4 h-4 text-amber-400" />
-            <span className="text-xs font-bold tracking-tight">
-              Discipline Shorts ({activeIndex + 1}/20)
-            </span>
+            <button
+              type="button"
+              onClick={onClose}
+              className="min-h-[38px] min-w-[38px] flex items-center justify-center rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-slate-700 text-slate-300 hover:text-white cursor-pointer"
+              aria-label="Back to Motivation Hub"
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </button>
+            <div className="flex items-center gap-1.5">
+              <Flame className="w-4 h-4 text-amber-400" />
+              <span className="text-xs font-bold tracking-tight">
+                Shorts ({activeIndex + 1}/20)
+              </span>
+            </div>
           </div>
 
           <div className="flex items-center gap-2">
@@ -140,13 +151,6 @@ export default function ShortsModal({
             >
               <List className="w-3.5 h-3.5 text-teal-400" />
               <span>All 20</span>
-            </button>
-            <button
-              type="button"
-              onClick={onClose}
-              className="min-h-[38px] min-w-[38px] flex items-center justify-center rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-slate-700 text-slate-300 hover:text-white cursor-pointer"
-            >
-              <X className="w-4 h-4" />
             </button>
           </div>
         </div>

@@ -1,6 +1,7 @@
 package com.beyondlimits.app;
 
 import android.os.Bundle;
+import android.webkit.CookieManager;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import com.getcapacitor.BridgeActivity;
@@ -28,12 +29,20 @@ public class MainActivity extends BridgeActivity {
             settings.setDomStorageEnabled(true);
             settings.setDatabaseEnabled(true);
             settings.setMediaPlaybackRequiresUserGesture(false);
+            settings.setJavaScriptCanOpenWindowsAutomatically(true);
+            settings.setSupportMultipleWindows(false);
 
-            // Removing '; wv' from User Agent prevents Google OAuth from blocking the WebView
-            // and stops Android from launching an external Chrome browser session.
+            // Enable first-party and third-party cookies (essential for Google OAuth & Clerk tokens)
+            CookieManager cookieManager = CookieManager.getInstance();
+            cookieManager.setAcceptCookie(true);
+            cookieManager.setAcceptThirdPartyCookies(webView, true);
+
+            // Strip '; wv' and 'Version/X.X' so Google OAuth recognizes the WebView
+            // as standard Android Chrome without blocking with disallowed_useragent
             String ua = settings.getUserAgentString();
-            if (ua != null && ua.contains("; wv")) {
-                settings.setUserAgentString(ua.replace("; wv", ""));
+            if (ua != null) {
+                String cleanUa = ua.replace("; wv", "").replaceAll("Version/\\d+\\.\\d+\\s?", "");
+                settings.setUserAgentString(cleanUa);
             }
 
             if (biometricBridge == null) {

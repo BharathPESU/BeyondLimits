@@ -24,11 +24,11 @@ export default function PWAInstallButton() {
       <button
         type="button"
         onClick={() => setShowModal(true)}
-        className="min-h-[44px] inline-flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-cyan-400 bg-slate-900 hover:bg-slate-800 border border-cyan-800/40 rounded-xl transition-all shadow-sm hover:shadow-[0_0_15px_rgba(0,240,255,0.15)] whitespace-nowrap shrink-0 cursor-pointer"
+        className="min-h-[34px] sm:min-h-[38px] inline-flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 text-[11px] sm:text-xs font-semibold text-cyan-400 bg-slate-900 hover:bg-slate-800 border border-cyan-800/40 rounded-xl transition-all shadow-sm hover:shadow-[0_0_15px_rgba(0,240,255,0.15)] whitespace-nowrap shrink-0 cursor-pointer"
         title="Install App / Download Android APK"
       >
-        <Download className="w-4 h-4 text-cyan-400 shrink-0" />
-        <span>Install App</span>
+        <Download className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+        <span>Install <span className="hidden xs:inline">App</span></span>
       </button>
 
       {showModal && (

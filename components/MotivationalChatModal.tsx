@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   X,
+  ArrowLeft,
   MessageSquare,
   Mic,
   MicOff,
@@ -356,10 +357,22 @@ export default function MotivationalChatModal({
       aria-modal="true"
       aria-labelledby="chat-modal-title"
     >
-      {/* Light Header with Agent Mode Toggle & Wake Word Pill */}
-      <div className="bg-white border-b border-slate-200 px-4 sm:px-6 py-3.5 shrink-0">
+      {/* Light Header with Safe Area, Left Back Arrow & Controls */}
+      <div className="bg-white border-b border-slate-200 px-4 sm:px-6 pt-[max(env(safe-area-inset-top),16px)] pb-3 shrink-0">
         <div className="max-w-4xl w-full mx-auto flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                stopListening();
+                onStopVoice();
+                onClose();
+              }}
+              aria-label="Back to dashboard"
+              className="min-h-[38px] min-w-[38px] -ml-2 inline-flex items-center justify-center rounded-xl text-slate-700 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
             <div
               className={`p-2 rounded-xl transition-colors ${
                 isAgentMode ? 'bg-emerald-50 text-emerald-700' : 'bg-teal-50 text-teal-700'
@@ -495,19 +508,6 @@ export default function MotivationalChatModal({
                 )}
               </div>
             )}
-
-            <button
-              type="button"
-              onClick={() => {
-                stopListening();
-                onStopVoice();
-                onClose();
-              }}
-              aria-label="Close Chat"
-              className="min-h-[38px] min-w-[38px] inline-flex items-center justify-center rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors cursor-pointer"
-            >
-              <X className="w-5 h-5" />
-            </button>
           </div>
         </div>
       </div>

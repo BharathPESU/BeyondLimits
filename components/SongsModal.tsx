@@ -7,6 +7,7 @@ import {
   SkipBack,
   SkipForward,
   RefreshCw,
+  ArrowLeft,
   X,
   Volume2,
 } from 'lucide-react';
@@ -210,37 +211,36 @@ export default function SongsModal({
       role="dialog"
       aria-modal="true"
     >
-      {/* Full-Screen Light Header (Consistent with original theme) */}
-      <div className="bg-white border-b border-slate-200 px-4 sm:px-6 py-4 shrink-0">
-        <div className="max-w-5xl w-full mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-teal-50 text-teal-700">
+      {/* Full-Screen Light Header with Safe Area & Left Back Arrow */}
+      <div className="bg-white border-b border-slate-200 px-4 sm:px-6 pt-[max(env(safe-area-inset-top),16px)] pb-3.5 shrink-0">
+        <div className="max-w-5xl w-full mx-auto flex items-center gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className="min-h-[40px] min-w-[40px] -ml-2 flex items-center justify-center rounded-xl text-slate-700 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer"
+            aria-label="Back to Motivation Hub"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <div className="flex items-center gap-2.5 flex-1 min-w-0">
+            <div className="p-2 rounded-xl bg-teal-50 text-teal-700 shrink-0">
               <Music className="w-5 h-5" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-base sm:text-lg font-bold text-slate-900">
-                  Motivational Songs Player (15 Tracks)
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-base sm:text-lg font-bold text-slate-900 leading-tight">
+                  Motivational Songs Player
                 </h2>
                 <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-teal-50 text-teal-700 border border-teal-200">
                   <Volume2 className="w-3 h-3 text-teal-600" />
                   Continuous Autoplay ON
                 </span>
               </div>
-              <p className="text-xs text-slate-500 hidden sm:block">
+              <p className="text-xs text-slate-500 hidden sm:block truncate">
                 Plays automatically one after another • Background playback enabled
               </p>
             </div>
           </div>
-
-          <button
-            type="button"
-            onClick={onClose}
-            className="min-h-[42px] min-w-[42px] flex items-center justify-center rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 cursor-pointer"
-            aria-label="Close Motivational Songs Player"
-          >
-            <X className="w-5 h-5" />
-          </button>
         </div>
       </div>
 

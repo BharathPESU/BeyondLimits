@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import {
   X,
+  ArrowLeft,
   Newspaper,
   Volume2,
   Square,
@@ -186,17 +187,28 @@ export default function NewsModal({
       aria-modal="true"
       aria-labelledby="news-modal-title"
     >
-      {/* Full-Screen Sticky Header */}
-      <div className="bg-white border-b border-slate-200 px-4 sm:px-6 py-4 shrink-0">
-        <div className="max-w-4xl w-full mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-teal-50 text-teal-700">
+      {/* Full-Screen Sticky Header with Safe Area & Left Back Arrow */}
+      <div className="bg-white border-b border-slate-200 px-4 sm:px-6 pt-[max(env(safe-area-inset-top),16px)] pb-3.5 shrink-0">
+        <div className="max-w-4xl w-full mx-auto flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => {
+              handleStop();
+              onClose();
+            }}
+            aria-label="Back to dashboard"
+            className="min-h-[40px] min-w-[40px] -ml-2 inline-flex items-center justify-center rounded-xl text-slate-700 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <div className="flex items-center gap-2.5 flex-1 min-w-0">
+            <div className="p-2 rounded-xl bg-teal-50 text-teal-700 shrink-0">
               <Newspaper className="w-5 h-5" />
             </div>
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-2 flex-wrap min-w-0">
               <h2
                 id="news-modal-title"
-                className="text-base sm:text-lg font-bold text-slate-900"
+                className="text-base sm:text-lg font-bold text-slate-900 leading-tight"
               >
                 Top 5 Daily News
               </h2>
@@ -209,18 +221,6 @@ export default function NewsModal({
               </span>
             </div>
           </div>
-
-          <button
-            type="button"
-            onClick={() => {
-              handleStop();
-              onClose();
-            }}
-            aria-label="Close News Modal"
-            className="min-h-[42px] min-w-[42px] inline-flex items-center justify-center rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
         </div>
       </div>
 

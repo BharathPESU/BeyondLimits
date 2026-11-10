@@ -3,6 +3,7 @@
 import React from 'react';
 import {
   X,
+  ArrowLeft,
   Music,
   Flame,
   Quote,
@@ -48,9 +49,17 @@ export default function MotivationHubModal({
       aria-modal="true"
       aria-labelledby="motivation-hub-title"
     >
-      {/* Full-Screen Light Header (Matches Calendar & Attendance) */}
-      <div className="bg-white border-b border-slate-200 px-4 sm:px-6 py-4 shrink-0">
-        <div className="max-w-4xl w-full mx-auto flex items-center justify-between">
+      {/* Full-Screen Light Header with Safe Area & Left Back Arrow */}
+      <div className="bg-white border-b border-slate-200 px-4 sm:px-6 pt-[max(env(safe-area-inset-top),16px)] pb-3.5 shrink-0">
+        <div className="max-w-4xl w-full mx-auto flex items-center gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Back to dashboard"
+            className="min-h-[40px] min-w-[40px] -ml-2 inline-flex items-center justify-center rounded-xl text-slate-700 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
           <div className="flex items-center gap-2.5">
             <div className="p-2 rounded-xl bg-teal-50 text-teal-700">
               <Sparkles className="w-5 h-5" />
@@ -62,15 +71,6 @@ export default function MotivationHubModal({
               Motivation Hub
             </h2>
           </div>
-
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close Motivation Hub"
-            className="min-h-[42px] min-w-[42px] inline-flex items-center justify-center rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
         </div>
       </div>
 

@@ -15,6 +15,9 @@ const config: CapacitorConfig = {
       '*.clerk.com',
       'accounts.google.com',
       '*.google.com',
+      '*.gstatic.com',
+      'apis.google.com',
+      '*.googleusercontent.com',
     ],
   },
   android: {
