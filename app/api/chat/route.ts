@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
 import { z } from 'zod';
-import { getDashboardPayload, getUserChatHistory, saveUserChatHistory } from '@/lib/db';
+import {
+  getDashboardPayload,
+  getUserChatHistory,
+  saveUserChatHistory,
+  saveUserFeelingRecord,
+  getUserFeelingRecords,
+} from '@/lib/db';
 import {
   DATABASE_SCHEMA_DESCRIPTION,
   queryUserAttendanceByDate,
@@ -29,31 +35,36 @@ const ChatRequestSchema = z.object({
     .default([]),
   agentMode: z.boolean().optional().default(false),
   userName: z.string().optional(),
+  userApiKey: z.string().optional(),
+  userApiKeys: z.array(z.string()).optional(),
 });
 
-function enforceMax480Chars(text: string): string {
+/**
+ * Enforce strict conciseness: under 250 characters (max 280) for fast, natural TTS
+ */
+function enforceMax250Chars(text: string): string {
   const cleaned = text
     .replace(/[*#_`~]+/g, '')
     .replace(/\s+/g, ' ')
     .trim();
 
-  if (cleaned.length <= 475) {
+  if (cleaned.length <= 250) {
     return cleaned;
   }
 
-  const sliced = cleaned.slice(0, 470);
+  const sliced = cleaned.slice(0, 248);
   const lastPeriod = Math.max(
     sliced.lastIndexOf('.'),
     sliced.lastIndexOf('!'),
     sliced.lastIndexOf('?')
   );
 
-  if (lastPeriod > 200) {
+  if (lastPeriod > 120) {
     return sliced.slice(0, lastPeriod + 1).trim();
   }
 
   const lastSpace = sliced.lastIndexOf(' ');
-  return `${sliced.slice(0, lastSpace > 200 ? lastSpace : 465).trim()}...`;
+  return `${sliced.slice(0, lastSpace > 120 ? lastSpace : 240).trim()}...`;
 }
 
 /**
@@ -100,7 +111,7 @@ function detectDateInQuery(message: string): string | null {
       return `${year}-${month}-${day}`;
     }
 
-    const regex2 = new RegExp(`(\\d{1,2})(?:st|nd|rd|th)?\\s+(?:of\\s+)?(?:${mPattern})`, 'i');
+    const regex2 = new RegExp(`(\\d{1,2})(?:st|nd|rd|th)?\\s+(?:${mPattern})`, 'i');
     const match2 = lower.match(regex2);
     if (match2) {
       const day = match2[1].padStart(2, '0');
@@ -113,12 +124,40 @@ function detectDateInQuery(message: string): string | null {
   return null;
 }
 
+/**
+ * Detect feeling/mood keywords to log into SQLite/local memory
+ */
+function extractUserFeelingAndMood(message: string): { feeling: string; mood: string } | null {
+  const lower = message.toLowerCase();
+  const moodCategories = [
+    { mood: 'stressed', words: ['stress', 'stressed', 'overwhelm', 'pressure', 'anxious', 'anxiety', 'panic', 'tension'] },
+    { mood: 'lazy', words: ['lazy', 'lethargic', 'procrastinat', 'unmotivated', 'sluggish', 'couch', 'slack'] },
+    { mood: 'fighting_urges', words: ['urge', 'urges', 'tempt', 'horny', 'slip', 'relapse', 'masturbat', 'choke', 'crave'] },
+    { mood: 'tired', words: ['tired', 'exhaust', 'sleepy', 'fatigue', 'drained', 'burned out', 'low energy'] },
+    { mood: 'confident', words: ['confident', 'strong', 'conquered', 'focused', 'great', 'unstoppable', 'good', 'happy', 'fire'] },
+    { mood: 'down', words: ['sad', 'down', 'depress', 'lonely', 'guilty', 'ashamed', 'bad', 'miserable', 'loser'] },
+  ];
+
+  for (const cat of moodCategories) {
+    if (cat.words.some((w) => lower.includes(w))) {
+      return { feeling: message.slice(0, 150), mood: cat.mood };
+    }
+  }
+
+  if (lower.includes('feel') || lower.includes('mood') || lower.includes('energy')) {
+    return { feeling: message.slice(0, 150), mood: 'expressed_feeling' };
+  }
+
+  return null;
+}
+
 export async function GET() {
   try {
     const history = getUserChatHistory('default');
-    return NextResponse.json({ history }, { status: 200 });
-  } catch (error) {
-    return NextResponse.json({ history: [] }, { status: 200 });
+    const feelings = getUserFeelingRecords(10);
+    return NextResponse.json({ history, feelings }, { status: 200 });
+  } catch {
+    return NextResponse.json({ history: [], feelings: [] }, { status: 200 });
   }
 }
 
@@ -134,17 +173,60 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { message, history, agentMode, userName: customUserName } = parsed.data;
-    const userApiKey =
+    const {
+      message,
+      history,
+      agentMode,
+      userName: customUserName,
+      userApiKey,
+      userApiKeys,
+    } = parsed.data;
+
+    // Build candidate keys list from client round-robin rotation
+    const candidateKeys: string[] = [];
+    if (Array.isArray(userApiKeys)) {
+      for (const k of userApiKeys) {
+        if (typeof k === 'string' && k.trim().length >= 10 && !candidateKeys.includes(k.trim())) {
+          candidateKeys.push(k.trim());
+        }
+      }
+    }
+    const singleKey =
       request.headers.get('x-gemini-api-key')?.trim() ||
+      userApiKey?.trim() ||
       (typeof body === 'object' && body !== null && 'userApiKey' in body
         ? String(body.userApiKey).trim()
         : '');
+
+    if (singleKey && singleKey.length >= 10 && !candidateKeys.includes(singleKey)) {
+      candidateKeys.push(singleKey);
+    }
+
     const serverApiKey = process.env.GEMINI_API_KEY?.trim();
 
     const dashboard = getDashboardPayload();
     const athleteName = customUserName || dashboard.userStats.userName || 'Bharath';
     const uStats = dashboard.userStats;
+
+    // Detect and log feelings to local SQLite database
+    const detectedMood = extractUserFeelingAndMood(message);
+    if (detectedMood) {
+      try {
+        saveUserFeelingRecord({
+          feeling: detectedMood.feeling,
+          mood: detectedMood.mood,
+          rawUserInput: message,
+        });
+      } catch {}
+    }
+
+    const recentFeelings = getUserFeelingRecords(4);
+    const feelingsHistoryContext =
+      recentFeelings.length > 0
+        ? recentFeelings
+            .map((f) => `- ${f.date} (${f.time}): [${f.mood}] "${f.feeling}"`)
+            .join('\n')
+        : '';
 
     // Build multi-turn conversational transcript memory
     const recentHistoryText = history
@@ -178,14 +260,14 @@ export async function POST(request: NextRequest) {
         lowerMsg.includes('masturbat') ||
         lowerMsg.includes('slip')
       ) {
-        const queryDate = detectedDate || 'today';
-        const attendanceRes = await queryUserAttendanceByDate(queryDate);
-        databaseContext += `\n[VERIFIED DATABASE RECORD: attendance_logs for ${attendanceRes.date}]\n${attendanceRes.summary}\n`;
+        const queryTarget = detectedDate || 'yesterday';
+        const attRes = await queryUserAttendanceByDate(queryTarget);
+        databaseContext += `\n[VERIFIED DATABASE RECORD: attendance_logs for "${queryTarget}"]\n${attRes.summary}\n`;
         dbQueryDetails = {
           queryType: 'get_attendance_by_date',
-          targetDate: attendanceRes.date,
+          targetDate: attRes.date,
           table: 'attendance_logs',
-          summary: attendanceRes.summary,
+          summary: attRes.summary,
         };
       }
 
@@ -193,15 +275,14 @@ export async function POST(request: NextRequest) {
         lowerMsg.includes('workout') ||
         lowerMsg.includes('exercise') ||
         lowerMsg.includes('routine') ||
-        lowerMsg.includes('pushup') ||
-        lowerMsg.includes('squat')
+        lowerMsg.includes('gym')
       ) {
         const workoutRes = await queryUserWorkoutUpdates();
-        databaseContext += `\n[VERIFIED DATABASE RECORD: workout_sessions]\n${workoutRes.summary}\n`;
+        databaseContext += `\n[VERIFIED DATABASE RECORD: user_workouts]\n${workoutRes.summary}\n`;
         if (!dbQueryDetails) {
           dbQueryDetails = {
-            queryType: 'get_workout_and_exercise_updates',
-            table: 'workout_sessions',
+            queryType: 'get_workout_routines',
+            table: 'user_workouts',
             summary: workoutRes.summary,
           };
         }
@@ -209,13 +290,12 @@ export async function POST(request: NextRequest) {
 
       if (
         lowerMsg.includes('achievement') ||
-        lowerMsg.includes('challenge') ||
         lowerMsg.includes('badge') ||
-        lowerMsg.includes('missing') ||
-        lowerMsg.includes('streak')
+        lowerMsg.includes('challenge') ||
+        lowerMsg.includes('rank')
       ) {
         const achieveRes = await queryUserAchievements();
-        databaseContext += `\n[VERIFIED DATABASE RECORD: challenges_catalog & badges_catalog]\n${achieveRes.summary}\n`;
+        databaseContext += `\n[VERIFIED DATABASE RECORD: user_challenges & achievements]\n${achieveRes.summary}\n`;
         if (!dbQueryDetails) {
           dbQueryDetails = {
             queryType: 'get_achievements_and_challenges',
@@ -250,28 +330,27 @@ export async function POST(request: NextRequest) {
       }
     } else {
       // Standard Discipline Coach prompt
-      systemInstruction = `You are the Iron-Will Discipline Coach & Mentor for ${athleteName}.
-Core Directive:
-1. Speak in a strong, commanding, stoic brotherly voice suitable for direct text-to-speech playback.
-2. Answer the question directly AND forcefully connect it back to self-discipline, zero masturbation, and relentless ambition.
-3. STRICT CHARACTER LIMIT: Your entire response MUST be under 480 characters. Plain spoken text only.`;
+      systemInstruction = `You are JARVIS, the Iron-Will Discipline Coach & Mentor for ${athleteName}.
+Core Directives:
+1. Speak in a strong, commanding, stoic brotherly voice suitable for direct text-to-speech.
+2. Directly answer the question with conviction and moral steel.
+3. STRICT CHARACTER LIMIT: Your entire response MUST be under 250 characters (max 280). Plain spoken text only.`;
     }
 
     const finalPrompt = `Athlete Identity: ${athleteName}
 Current Clean Streak: ${uStats.currentStreak} clean days
 Monthly Self-Control Rate: ${uStats.monthlyDisciplineRate}%
 ${databaseContext ? `\nVerified Read-Only Database Fact:\n${databaseContext}` : ''}
-${recentHistoryText ? `\n=== PREVIOUS CONVERSATION MEMORY ===\n${recentHistoryText}\n` : ''}
-=== CURRENT ATHLETE QUESTION ===
+${feelingsHistoryContext ? `\n=== RECENT ATHLETE FEELINGS & MOOD LOG ===\n${feelingsHistoryContext}\n` : ''}
+${recentHistoryText ? `\n=== PREVIOUS CONVERSATION FLOW (MEMORY) ===\n${recentHistoryText}\n` : ''}
+=== CURRENT ATHLETE QUESTION / MESSAGE ===
 ${athleteName}: "${message}"
 
 Directives for Response:
 1. Address the athlete by name (${athleteName}) if natural.
-2. Remember previous conversation context if the athlete is following up.
-3. Directly answer their question using the verified database records above.
-4. If they slipped/masturbated on the date in question, state the exact reason they logged, give strong moral grounding, and passionately build their confidence to conquer today.
-5. If they asked about workout/achievements, state their exact streak and missing challenges.
-6. STRICT CHARACTER LIMIT: Under 480 characters total. Spoken punchy sentences only.`;
+2. CONVERSATION FLOW: If continuing previous topic, smoothly refer back ('As we discussed...'), then answer the primary question directly.
+3. If user shares how they feel (or answered a check-in), acknowledge their mood, explain why that feeling is their discipline training ground, and give immediate moral fire.
+4. STRICT CHARACTER LIMIT: The entire response MUST be under 250 characters total (never exceed 280). 1 to 2 punchy, spoken sentences only.`;
 
     const generateWithKey = async (key: string): Promise<string> => {
       const ai = new GoogleGenAI({
@@ -284,64 +363,67 @@ Directives for Response:
         },
       });
 
-      // Cascade sequence: gemini-2.5-flash -> gemini-3.5-flash-lite -> gemini-3.8-flash
-      try {
-        const response = await ai.models.generateContent({
-          model: 'gemini-2.5-flash',
-          contents: finalPrompt,
-          config: {
-            systemInstruction,
-            temperature: 0.7,
-            maxOutputTokens: 600,
-          },
-        });
-        return response.text || '';
-      } catch (err1) {
-        console.warn('gemini-2.5-flash failed, attempting gemini-3.5-flash-lite:', err1);
+      // Try valid models in priority order
+      const candidateModels = [
+        'gemini-2.5-flash',
+        'gemini-2.5-pro',
+        'gemini-2.0-flash',
+        'gemini-1.5-flash',
+      ];
+
+      for (const model of candidateModels) {
         try {
           const response = await ai.models.generateContent({
-            model: 'gemini-3.5-flash-lite',
+            model,
             contents: finalPrompt,
             config: {
               systemInstruction,
               temperature: 0.7,
-              maxOutputTokens: 600,
+              maxOutputTokens: 350,
             },
           });
-          return response.text || '';
-        } catch (err2) {
-          console.warn('gemini-3.5-flash-lite failed, attempting gemini-3.8-flash:', err2);
-          const response = await ai.models.generateContent({
-            model: 'gemini-3.8-flash',
-            contents: finalPrompt,
-            config: {
-              systemInstruction,
-              temperature: 0.7,
-              maxOutputTokens: 600,
-            },
-          });
-          return response.text || '';
+          const text =
+            response.text ||
+            (response.candidates?.[0]?.content?.parts as Array<{ text?: string }> | undefined)
+              ?.map((p) => p.text || '')
+              .join('') ||
+            '';
+          if (text.trim()) {
+            return text.trim();
+          }
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          // If quota exceeded or 429, rethrow so round-robin moves to next key immediately
+          if (msg.includes('429') || msg.includes('RESOURCE_EXHAUSTED') || msg.includes('Quota exceeded')) {
+            throw err;
+          }
+          console.warn(`Model ${model} failed:`, msg.slice(0, 80));
         }
       }
+      return '';
     };
 
     let rawReply = '';
-    let keyProvider: 'user-gemini-key' | 'server-gemini-key' | 'deterministic-fallback' =
-      'deterministic-fallback';
+    let keyProvider = 'deterministic-fallback';
 
-    // Step 1: User's personal Gemini API key
-    if (userApiKey && userApiKey.length >= 10) {
-      try {
-        rawReply = await generateWithKey(userApiKey);
-        if (rawReply) {
-          keyProvider = 'user-gemini-key';
+    // Step 1: Round-Robin Rotation across user's candidate Gemini API keys (up to 10 keys)
+    if (candidateKeys.length > 0) {
+      for (let i = 0; i < candidateKeys.length; i++) {
+        const candidate = candidateKeys[i];
+        try {
+          rawReply = await generateWithKey(candidate);
+          if (rawReply) {
+            keyProvider = `user-gemini-key (Key #${i + 1} of ${candidateKeys.length})`;
+            break;
+          }
+        } catch (err) {
+          console.warn(`User Gemini API Key #${i + 1} failed or quota exhausted:`, err);
+          // Failover to next key in round-robin sequence
         }
-      } catch (err) {
-        console.warn('User Gemini API key failed, falling back to Vercel key:', err);
       }
     }
 
-    // Step 2: Server-hosted Gemini API key on Vercel
+    // Step 2: Server-hosted Gemini API key fallback
     if (!rawReply && serverApiKey && serverApiKey !== 'MY_GEMINI_API_KEY') {
       try {
         rawReply = await generateWithKey(serverApiKey);
@@ -353,21 +435,21 @@ Directives for Response:
       }
     }
 
-    // Step 3: Deterministic high-impact fallback (only if both keys fail completely)
+    // Step 3: Concise deterministic fallback if all keys fail
     if (!rawReply) {
       if (agentMode && dbQueryDetails) {
-        rawReply = enforceMax480Chars(
-          `Hey ${athleteName}, according to your database: ${dbQueryDetails.summary} Remember, every urge conquered builds unstoppable masculine power. Stand up, shake off weakness, and lead your day with honor!`
+        rawReply = enforceMax250Chars(
+          `Hey ${athleteName}, your database shows: ${dbQueryDetails.summary} Every urge conquered builds masculine power. Stand up and lead today with honor!`
         );
       } else {
-        rawReply = enforceMax480Chars(
-          `Stay locked in, ${athleteName}! Regarding "${message.slice(0, 50)}": true discipline means conquering every urge and channeling your raw life-force into building your future. Master your mind today!`
+        rawReply = enforceMax250Chars(
+          `Stay locked in, ${athleteName}! True discipline means conquering urges and channeling raw life-force into your ambitions. Master your mind today!`
         );
       }
       keyProvider = 'deterministic-fallback';
     }
 
-    const finalReply = enforceMax480Chars(rawReply);
+    const finalReply = enforceMax250Chars(rawReply);
 
     // Save turn to SQLite/JSON backend chat history
     try {
@@ -409,6 +491,7 @@ Directives for Response:
         dbQueryDetails,
         systemPrompt: systemInstruction,
         provider: keyProvider,
+        savedFeeling: !!detectedMood,
       },
       { status: 200 }
     );

@@ -21,6 +21,8 @@ const isPublicRoute = createRouteMatcher([
   '/assets(.*)',
   '/api/admin/login(.*)',
   '/api/admin/logout(.*)',
+  '/api/settings/verify-gemini(.*)',
+  '/api/chat(.*)',
   '/api/songs(.*)',
   '/api/workout/routines(.*)',
   '/admin(.*)',

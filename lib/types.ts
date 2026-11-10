@@ -275,6 +275,18 @@ export interface PuterGlobal {
   };
 }
 
+export interface UserFeelingRecord {
+  id: string;
+  date: string; // YYYY-MM-DD
+  time: string; // HH:mm
+  feeling: string;
+  mood: string; // e.g. "stressed", "lazy", "confident", "fighting_urges", "fatigued"
+  trigger?: string;
+  notes?: string;
+  rawUserInput?: string;
+  agentResponse?: string;
+}
+
 declare global {
   interface Window {
     puter?: PuterGlobal;

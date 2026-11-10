@@ -27,6 +27,7 @@ import {
   UserProgressStats,
   WeeklyAchievementComparison,
   MotivationalChatMessage,
+  UserFeelingRecord,
 } from './types';
 
 interface ResolvedDbConfig {
@@ -53,6 +54,7 @@ interface StoredSchemaState {
   nextAttendanceId: number;
   nextReminderLogId: number;
   chatHistory?: Record<string, MotivationalChatMessage[]>;
+  userFeelings?: UserFeelingRecord[];
 }
 
 const DEFAULT_TECH_NEWS_ITEMS: TechNewsItem[] = [
@@ -1407,3 +1409,38 @@ export function saveUserChatHistory(
   store.chatHistory[userId] = messages.slice(-50);
   persistStore(store, config);
 }
+
+export function saveUserFeelingRecord(entry: Omit<UserFeelingRecord, 'id' | 'date' | 'time'> & { id?: string; date?: string; time?: string }): UserFeelingRecord {
+  const { store, config } = loadStore();
+  if (!store.userFeelings) {
+    store.userFeelings = [];
+  }
+  const now = new Date();
+  const dateStr = entry.date || format(now, 'yyyy-MM-dd');
+  const timeStr = entry.time || format(now, 'HH:mm');
+
+  const record: UserFeelingRecord = {
+    id: entry.id || `feel-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    date: dateStr,
+    time: timeStr,
+    feeling: entry.feeling,
+    mood: entry.mood || 'unspecified',
+    trigger: entry.trigger,
+    notes: entry.notes,
+    rawUserInput: entry.rawUserInput,
+    agentResponse: entry.agentResponse,
+  };
+
+  store.userFeelings.unshift(record);
+  if (store.userFeelings.length > 100) {
+    store.userFeelings = store.userFeelings.slice(0, 100);
+  }
+  persistStore(store, config);
+  return record;
+}
+
+export function getUserFeelingRecords(limit = 20): UserFeelingRecord[] {
+  const { store } = loadStore();
+  return (store.userFeelings || []).slice(0, limit);
+}
+

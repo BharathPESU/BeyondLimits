@@ -16,8 +16,10 @@ import {
   Check,
   Zap,
   Trash2,
+  HeartHandshake,
 } from 'lucide-react';
 import { MotivationalChatMessage } from '@/lib/types';
+import { getRoundRobinGeminiKeys, getJarvisVoiceSettings } from '@/lib/gemini-keys';
 
 interface MotivationalChatModalProps {
   isOpen: boolean;
@@ -64,17 +66,17 @@ interface SpeechRecognitionLike {
 }
 
 const COACH_PROMPTS = [
+  'How am I feeling right now? Check in on my mood',
   'I feel a strong urge right now, motivate me!',
   'How do I stay focused late at night while coding?',
-  'Why is self-control the ultimate superpower?',
   'Give me a 30-second discipline check!',
 ];
 
 const AGENT_PROMPTS = [
+  'How am I feeling today? Check in on my mood and triggers',
   'How was my day on yesterday? Did I slip or stay clean?',
   'What are my exercise updates and completed achievements?',
   'Analyze my relapse triggers and give me moral guidance',
-  'What are my missing challenges and locked badges?',
 ];
 
 export default function MotivationalChatModal({
@@ -152,23 +154,22 @@ export default function MotivationalChatModal({
           content: m.content,
         }));
 
-        const userCustomKey =
-          typeof window !== 'undefined'
-            ? localStorage.getItem('beyondlimits_gemini_api_key') || ''
-            : '';
+        const candidateKeys = getRoundRobinGeminiKeys();
+        const primaryKey = candidateKeys[0] || '';
 
         const res = await fetch('/api/chat', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            ...(userCustomKey ? { 'x-gemini-api-key': userCustomKey } : {}),
+            ...(primaryKey ? { 'x-gemini-api-key': primaryKey } : {}),
           },
           body: JSON.stringify({
             message: trimmed,
             history: historyPayload,
             agentMode: isAgentMode,
             userName,
-            userApiKey: userCustomKey,
+            userApiKey: primaryKey,
+            userApiKeys: candidateKeys,
           }),
         });
 
@@ -333,6 +334,11 @@ export default function MotivationalChatModal({
     }
   };
 
+  const handleMoodCheckIn = async () => {
+    const prompt = `Hey ${wakeUpWord || 'Jarvis'}, check in on how I am feeling right now and ask me about my mood and mindset today.`;
+    await sendMessageToAgent(prompt, true);
+  };
+
   const handleSaveWakeWordInline = () => {
     const trimmed = tempWakeWord.trim();
     if (trimmed) {
@@ -411,6 +417,18 @@ export default function MotivationalChatModal({
                   }`}
                 />
               </div>
+            </button>
+
+            {/* Proactive Mood Check-in Button */}
+            <button
+              type="button"
+              disabled={isSending}
+              onClick={() => void handleMoodCheckIn()}
+              title="Proactive Mood & Mental State Check-in"
+              className="min-h-[38px] px-2.5 rounded-xl text-teal-700 hover:text-teal-900 bg-teal-50 hover:bg-teal-100 border border-teal-200 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+            >
+              <HeartHandshake className="w-3.5 h-3.5 text-teal-600" />
+              <span className="hidden sm:inline">Check-in Mood</span>
             </button>
 
             {/* Clear History Button */}

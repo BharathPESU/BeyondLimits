@@ -35,7 +35,9 @@ import {
   TrendingUp,
   Bot,
   Mic,
+  HeartHandshake,
 } from 'lucide-react';
+import { getRoundRobinGeminiKeys, getJarvisVoiceSettings } from '@/lib/gemini-keys';
 import { SignInButton, SignUpButton, Show, UserButton, useUser } from '@clerk/nextjs';
 import {
   DailyMotivationRecord,
@@ -481,13 +483,14 @@ export default function DisciplineDashboardClient({
         try {
           window.speechSynthesis.cancel();
           const utterance = new SpeechSynthesisUtterance(text);
+          const voiceSettings = getJarvisVoiceSettings();
           const voices = window.speechSynthesis.getVoices();
-          const maleVoice = voices.find((v) =>
-            /matthew|david|daniel|alex|male|guy|mark|james|george/i.test(v.name)
+          const preferredVoice = voices.find((v) =>
+            new RegExp(voiceSettings.puterVoice || 'matthew|david|daniel|alex|male', 'i').test(v.name)
           );
-          if (maleVoice) utterance.voice = maleVoice;
-          utterance.pitch = 0.82;
-          utterance.rate = 0.96;
+          if (preferredVoice) utterance.voice = preferredVoice;
+          utterance.pitch = voiceSettings.pitch || 0.9;
+          utterance.rate = voiceSettings.rate || 1.0;
 
           utterance.onstart = () => {
             setIsSpeaking(true);
@@ -532,9 +535,10 @@ export default function DisciplineDashboardClient({
 
       if (puterObj?.ai?.txt2speech) {
         try {
+          const voiceSettings = getJarvisVoiceSettings();
           const audio = await puterObj.ai.txt2speech(scriptText, {
             provider: 'aws-polly',
-            voice: 'Matthew',
+            voice: voiceSettings.puterVoice || 'Matthew',
             engine: 'neural',
             language: 'en-US',
           });
@@ -764,21 +768,20 @@ export default function DisciplineDashboardClient({
               setAgentVoiceStatus(`Querying database for "${afterWake}"...`);
 
               try {
-                const userCustomKey =
-                  typeof window !== 'undefined'
-                    ? localStorage.getItem('beyondlimits_gemini_api_key') || ''
-                    : '';
+                const candidateKeys = getRoundRobinGeminiKeys();
+                const primaryKey = candidateKeys[0] || '';
                 const res = await fetch('/api/chat', {
                   method: 'POST',
                   headers: {
                     'Content-Type': 'application/json',
-                    ...(userCustomKey ? { 'x-gemini-api-key': userCustomKey } : {}),
+                    ...(primaryKey ? { 'x-gemini-api-key': primaryKey } : {}),
                   },
                   body: JSON.stringify({
                     message: afterWake,
                     agentMode: true,
                     userName: currentName,
-                    userApiKey: userCustomKey,
+                    userApiKey: primaryKey,
+                    userApiKeys: candidateKeys,
                   }),
                 });
 
@@ -913,6 +916,26 @@ export default function DisciplineDashboardClient({
       setLoadingMotivation(false);
     }
   };
+
+  const handleProactiveMoodCheckIn = useCallback(async () => {
+    const currentName = user?.firstName || user?.fullName || dashboard.userStats.userName || 'Bharath';
+    const checkInPrompt = `Hey ${currentName}, discipline check-in. How are you feeling right now, and what challenges or urges are you facing today?`;
+
+    setIsChatOpen(true);
+    setChatMessages((prev) => [
+      ...prev,
+      {
+        id: `agent-checkin-${Date.now()}`,
+        role: 'assistant',
+        content: checkInPrompt,
+        charCount: checkInPrompt.length,
+        createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        agentMode: true,
+      },
+    ]);
+
+    await speakCustomText(checkInPrompt);
+  }, [dashboard.userStats.userName, speakCustomText, user]);
 
   const openAttendance = (dateStr?: string) => {
     setSelectedDate(dateStr || new Date().toISOString().slice(0, 10));
@@ -1134,6 +1157,19 @@ export default function DisciplineDashboardClient({
                   />
                 </div>
               </button>
+
+              {/* Proactive Mood & Energy Check-in Button */}
+              {isAgentMode && (
+                <button
+                  type="button"
+                  onClick={handleProactiveMoodCheckIn}
+                  className="min-h-[40px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl bg-teal-500/20 text-teal-300 hover:bg-teal-500/30 border border-teal-500/40 transition-all cursor-pointer shadow-sm"
+                  title="Jarvis asks how you are feeling and logs your mental state to local database"
+                >
+                  <HeartHandshake className="w-3.5 h-3.5 text-teal-400" />
+                  <span>Check-In Mood</span>
+                </button>
+              )}
             </div>
           </div>
 
@@ -1203,6 +1239,19 @@ export default function DisciplineDashboardClient({
               >
                 Weekly Trend (Month)
               </button>
+
+              {/* Proactive Mood & Energy Check-in Button */}
+              {isAgentMode && (
+                <button
+                  type="button"
+                  onClick={handleProactiveMoodCheckIn}
+                  className="min-h-[40px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl bg-teal-500/20 text-teal-300 hover:bg-teal-500/30 border border-teal-500/40 transition-all cursor-pointer shadow-sm"
+                  title="Jarvis asks how you are feeling and logs your mental state to local database"
+                >
+                  <HeartHandshake className="w-3.5 h-3.5 text-teal-400" />
+                  <span>Check-In Mood</span>
+                </button>
+              )}
             </div>
           </div>
 

@@ -1,25 +1,24 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useUser } from '@clerk/nextjs';
 import {
   X,
   Key,
   ExternalLink,
-  Eye,
-  EyeOff,
   CheckCircle2,
   AlertCircle,
   Loader2,
   Trash2,
   Sparkles,
   ShieldCheck,
-  User,
-  Zap,
-  Bot,
-  Mic,
   Fingerprint,
-  Lock,
+  Mic,
+  Volume2,
+  Play,
+  Square,
+  Plus,
+  RefreshCw,
 } from 'lucide-react';
 import {
   isBiometricSupported,
@@ -28,6 +27,16 @@ import {
   verifyDeviceBiometric,
   registerLocalBiometricCredential,
 } from '@/lib/biometric-auth';
+import {
+  MAX_GEMINI_KEYS,
+  JARVIS_VOICE_OPTIONS,
+  JarvisVoiceOption,
+  getStoredGeminiKeys,
+  saveStoredGeminiKeys,
+  getCurrentRoundRobinIndex,
+  getJarvisVoiceSettings,
+  saveJarvisVoiceSettings,
+} from '@/lib/gemini-keys';
 
 interface UserSettingsModalProps {
   isOpen: boolean;
@@ -38,19 +47,26 @@ interface UserSettingsModalProps {
 export default function UserSettingsModal({
   isOpen,
   onClose,
-  onOpenProfile,
 }: UserSettingsModalProps) {
   const { user, isLoaded } = useUser();
 
-  const [apiKey, setApiKey] = useState<string>('');
-  const [showKey, setShowKey] = useState<boolean>(false);
-  const [isVerifying, setIsVerifying] = useState<boolean>(false);
-  const [isSaving, setIsSaving] = useState<boolean>(false);
-  const [verificationResult, setVerificationResult] = useState<{
-    valid: boolean;
-    message: string;
-  } | null>(null);
+  // Multi-Key Gemini API State
+  const [keysList, setKeysList] = useState<string[]>([]);
+  const [newKeyInput, setNewKeyInput] = useState<string>('');
+  const [keyVerifyingIndex, setKeyVerifyingIndex] = useState<number | null>(null);
+  const [keyVerificationResults, setKeyVerificationResults] = useState<
+    Record<number, { valid: boolean; message: string }>
+  >({});
+  const [isSavingKeys, setIsSavingKeys] = useState<boolean>(false);
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
+
+  // Jarvis Voice Configuration State
+  const [selectedVoiceId, setSelectedVoiceId] = useState<string>('matthew');
+  const [voiceRate, setVoiceRate] = useState<number>(1.0);
+  const [isPlayingDemo, setIsPlayingDemo] = useState<boolean>(false);
+  const demoAudioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Wake-up word state
   const [wakeUpWord, setWakeUpWord] = useState<string>('Jarvis');
   const [wakeWordSaveStatus, setWakeWordSaveStatus] = useState<string | null>(null);
 
@@ -59,21 +75,25 @@ export default function UserSettingsModal({
   const [biometricSupported, setBiometricSupported] = useState<boolean>(false);
   const [isTestingBiometric, setIsTestingBiometric] = useState<boolean>(false);
   const [biometricTestStatus, setBiometricTestStatus] = useState<string | null>(null);
-  const [isAddingPasskey, setIsAddingPasskey] = useState<boolean>(false);
 
-  // Hydrate stored API key and biometrics from localStorage and Clerk metadata
+  // Hydrate stored settings on open
   useEffect(() => {
     if (!isOpen) return;
 
     isBiometricSupported().then((supported) => setBiometricSupported(supported));
     setBiometricEnabled(isBiometricLockEnabled() || (user?.passkeys?.length ?? 0) > 0);
 
-    // Load from localStorage
+    // 1. Load Gemini Keys
+    const storedKeys = getStoredGeminiKeys();
+    setKeysList(storedKeys);
+
+    // 2. Load Voice Settings
+    const voiceSettings = getJarvisVoiceSettings();
+    setSelectedVoiceId(voiceSettings.voiceId);
+    setVoiceRate(voiceSettings.rate);
+
+    // 3. Load Wake Word
     try {
-      const stored = localStorage.getItem('beyondlimits_gemini_api_key');
-      if (stored) {
-        setApiKey(stored);
-      }
       const storedWakeWord = localStorage.getItem('beyondlimits_wakeup_word');
       if (storedWakeWord) {
         setWakeUpWord(storedWakeWord);
@@ -82,11 +102,16 @@ export default function UserSettingsModal({
 
     // Hydrate from Clerk metadata if available
     if (isLoaded && user) {
-      const meta = (user.unsafeMetadata || {}) as Record<string, string>;
-      if (meta.geminiApiKey) {
-        setApiKey(meta.geminiApiKey);
+      const meta = (user.unsafeMetadata || {}) as Record<string, unknown>;
+      if (Array.isArray(meta.geminiApiKeys) && meta.geminiApiKeys.length > 0) {
+        const validMeta = meta.geminiApiKeys.filter((k): k is string => typeof k === 'string');
+        setKeysList(validMeta);
+        saveStoredGeminiKeys(validMeta);
       }
-      if (meta.wakeUpWord) {
+      if (typeof meta.jarvisVoiceId === 'string') {
+        setSelectedVoiceId(meta.jarvisVoiceId);
+      }
+      if (typeof meta.wakeUpWord === 'string') {
         setWakeUpWord(meta.wakeUpWord);
       }
     }
@@ -94,184 +119,228 @@ export default function UserSettingsModal({
 
   if (!isOpen) return null;
 
-  // Test the key against /api/settings/verify-gemini
-  const handleVerifyKey = async () => {
-    const trimmed = apiKey.trim();
-    if (!trimmed) {
-      setVerificationResult({
-        valid: false,
-        message: 'Please paste your Gemini API key first.',
-      });
+  // Add a new Gemini API Key (up to 10)
+  const handleAddKey = () => {
+    const trimmed = newKeyInput.trim();
+    if (!trimmed) return;
+
+    if (keysList.length >= MAX_GEMINI_KEYS) {
+      setSaveStatus(`Maximum of ${MAX_GEMINI_KEYS} Gemini API keys reached.`);
+      setTimeout(() => setSaveStatus(null), 3000);
       return;
     }
 
-    setIsVerifying(true);
-    setVerificationResult(null);
+    if (keysList.includes(trimmed)) {
+      setSaveStatus('This key is already in your rotation list.');
+      setTimeout(() => setSaveStatus(null), 3000);
+      return;
+    }
 
+    const updated = [...keysList, trimmed];
+    setKeysList(updated);
+    saveStoredGeminiKeys(updated);
+    setNewKeyInput('');
+
+    // Sync to Clerk metadata
+    if (user) {
+      user.update({
+        unsafeMetadata: {
+          ...user.unsafeMetadata,
+          geminiApiKeys: updated,
+          geminiApiKey: updated[0] || '',
+        },
+      }).catch(() => {});
+    }
+
+    setSaveStatus(`Key added! Total keys in Round-Robin rotation: ${updated.length}`);
+    setTimeout(() => setSaveStatus(null), 3000);
+  };
+
+  // Remove a key from rotation
+  const handleRemoveKey = (indexToRemove: number) => {
+    const updated = keysList.filter((_, idx) => idx !== indexToRemove);
+    setKeysList(updated);
+    saveStoredGeminiKeys(updated);
+
+    // Clear verification result for this index
+    const copy = { ...keyVerificationResults };
+    delete copy[indexToRemove];
+    setKeyVerificationResults(copy);
+
+    if (user) {
+      user.update({
+        unsafeMetadata: {
+          ...user.unsafeMetadata,
+          geminiApiKeys: updated,
+          geminiApiKey: updated[0] || '',
+        },
+      }).catch(() => {});
+    }
+
+    setSaveStatus(`Key removed. ${updated.length} keys remaining.`);
+    setTimeout(() => setSaveStatus(null), 2500);
+  };
+
+  // Test an individual Gemini Key
+  const handleVerifyIndividualKey = async (keyToTest: string, index: number) => {
+    setKeyVerifyingIndex(index);
     try {
       const res = await fetch('/api/settings/verify-gemini', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ apiKey: trimmed }),
+        body: JSON.stringify({ apiKey: keyToTest }),
       });
-
       const data = await res.json();
       if (res.ok && data.valid) {
-        setVerificationResult({
-          valid: true,
-          message: data.message || 'Key verified successfully with Gemini 2.5 Flash!',
-        });
+        setKeyVerificationResults((prev) => ({
+          ...prev,
+          [index]: { valid: true, message: data.message || 'Key Active & Verified!' },
+        }));
       } else {
-        setVerificationResult({
-          valid: false,
-          message: data.error || 'Failed to verify API key with Google.',
-        });
+        setKeyVerificationResults((prev) => ({
+          ...prev,
+          [index]: { valid: false, message: data.error || 'Verification failed / Quota exhausted' },
+        }));
       }
     } catch (err) {
-      setVerificationResult({
-        valid: false,
-        message: err instanceof Error ? err.message : 'Network error verifying key.',
-      });
+      setKeyVerificationResults((prev) => ({
+        ...prev,
+        [index]: { valid: false, message: err instanceof Error ? err.message : 'Network error' },
+      }));
     } finally {
-      setIsVerifying(false);
+      setKeyVerifyingIndex(null);
     }
   };
 
-  // Save the key into localStorage and Clerk metadata
-  const handleSaveKey = async () => {
-    const trimmed = apiKey.trim();
-    if (!trimmed) {
-      setVerificationResult({
-        valid: false,
-        message: 'Please enter a valid Gemini API key.',
-      });
+  // Play voice demo sample for selected voice
+  const handlePlayVoiceDemo = async () => {
+    if (isPlayingDemo) {
+      if (demoAudioRef.current) {
+        demoAudioRef.current.pause();
+        demoAudioRef.current = null;
+      }
+      try {
+        window.speechSynthesis?.cancel();
+      } catch {}
+      setIsPlayingDemo(false);
       return;
     }
 
-    setIsSaving(true);
-    setSaveStatus(null);
+    const voice = JARVIS_VOICE_OPTIONS.find((v) => v.id === selectedVoiceId) || JARVIS_VOICE_OPTIONS[0];
+    setIsPlayingDemo(true);
 
     try {
-      // 1. Save to localStorage
-      localStorage.setItem('beyondlimits_gemini_api_key', trimmed);
-
-      // 2. Save to Clerk user unsafeMetadata
-      if (user) {
-        await user.update({
-          unsafeMetadata: {
-            ...user.unsafeMetadata,
-            geminiApiKey: trimmed,
-          },
-        });
+      let puterObj = typeof window !== 'undefined' ? window.puter : undefined;
+      if (!puterObj && typeof window !== 'undefined') {
+        for (let i = 0; i < 4; i++) {
+          await new Promise((r) => setTimeout(r, 100));
+          if (window.puter?.ai?.txt2speech) {
+            puterObj = window.puter;
+            break;
+          }
+        }
       }
 
-      setSaveStatus('Your Gemini API key has been saved successfully!');
-      setTimeout(() => setSaveStatus(null), 4000);
-    } catch (err) {
-      setSaveStatus(
-        err instanceof Error ? err.message : 'Failed to save settings'
-      );
-      setTimeout(() => setSaveStatus(null), 4000);
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  // Remove key and clear storage
-  const handleClearKey = async () => {
-    setApiKey('');
-    setVerificationResult(null);
-    try {
-      localStorage.removeItem('beyondlimits_gemini_api_key');
-      if (user) {
-        await user.update({
-          unsafeMetadata: {
-            ...user.unsafeMetadata,
-            geminiApiKey: '',
-          },
+      if (puterObj?.ai?.txt2speech) {
+        const audio = await puterObj.ai.txt2speech(voice.sampleText, {
+          provider: 'aws-polly',
+          voice: voice.puterVoice,
+          engine: 'neural',
+          language: 'en-US',
         });
+        demoAudioRef.current = audio;
+        audio.onended = () => setIsPlayingDemo(false);
+        audio.onerror = () => setIsPlayingDemo(false);
+        await audio.play();
+        return;
       }
-      setSaveStatus('Custom API key removed. Using Vercel server key fallback.');
-      setTimeout(() => setSaveStatus(null), 4000);
     } catch {}
+
+    // Fallback to Web Speech API
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      try {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(voice.sampleText);
+        utterance.rate = voiceRate;
+        utterance.onend = () => setIsPlayingDemo(false);
+        utterance.onerror = () => setIsPlayingDemo(false);
+        window.speechSynthesis.speak(utterance);
+      } catch {
+        setIsPlayingDemo(false);
+      }
+    } else {
+      setIsPlayingDemo(false);
+    }
   };
 
-  // Save custom wake-up word
-  const handleSaveWakeWord = async (customWord?: string) => {
-    const wordToSave = (customWord !== undefined ? customWord : wakeUpWord).trim();
-    if (!wordToSave) return;
-    setWakeUpWord(wordToSave);
+  // Save Voice selection
+  const handleSaveVoice = (newVoiceId: string) => {
+    setSelectedVoiceId(newVoiceId);
+    saveJarvisVoiceSettings({ voiceId: newVoiceId, rate: voiceRate });
+    if (user) {
+      user.update({
+        unsafeMetadata: {
+          ...user.unsafeMetadata,
+          jarvisVoiceId: newVoiceId,
+        },
+      }).catch(() => {});
+    }
+  };
+
+  // Save Voice Rate
+  const handleSaveRate = (newRate: number) => {
+    setVoiceRate(newRate);
+    saveJarvisVoiceSettings({ rate: newRate });
+  };
+
+  // Save Wake-Up Word
+  const handleSaveWakeUpWord = async () => {
+    const trimmed = wakeUpWord.trim();
+    if (!trimmed) return;
+
     try {
-      localStorage.setItem('beyondlimits_wakeup_word', wordToSave);
+      localStorage.setItem('beyondlimits_wakeup_word', trimmed);
       if (user) {
         await user.update({
           unsafeMetadata: {
             ...user.unsafeMetadata,
-            wakeUpWord: wordToSave,
+            wakeUpWord: trimmed,
           },
         });
       }
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new Event('beyondlimits_agent_config_changed'));
-      }
-      setWakeWordSaveStatus(`Wake-up word updated to "${wordToSave}"!`);
-      setTimeout(() => setWakeWordSaveStatus(null), 3500);
+      setWakeWordSaveStatus(`Wake-up word updated to "${trimmed}"!`);
+      setTimeout(() => setWakeWordSaveStatus(null), 3000);
     } catch {
-      setWakeWordSaveStatus('Failed to save wake-up word.');
-      setTimeout(() => setWakeWordSaveStatus(null), 3500);
+      setWakeWordSaveStatus('Saved locally to browser.');
+      setTimeout(() => setWakeWordSaveStatus(null), 3000);
     }
   };
 
-  // Biometric toggle handler
+  // Biometric toggle
   const handleToggleBiometric = async (enabled: boolean) => {
     setBiometricEnabled(enabled);
     setBiometricLockEnabled(enabled);
-    if (enabled && (user?.passkeys?.length ?? 0) === 0 && user) {
-      await handleAddPasskey();
-    }
+    setBiometricTestStatus(null);
   };
 
-  // Test native biometric prompt
   const handleTestBiometric = async () => {
     setIsTestingBiometric(true);
     setBiometricTestStatus(null);
     try {
       const res = await verifyDeviceBiometric();
       if (res.success) {
-        setBiometricTestStatus('Verified! Screen lock & fingerprint are functioning properly.');
+        setBiometricTestStatus('Fingerprint / Screen Lock verified successfully!');
       } else {
-        setBiometricTestStatus(res.error || 'Verification failed.');
+        setBiometricTestStatus(res.error || 'Verification cancelled or failed.');
       }
-    } catch (e: unknown) {
-      setBiometricTestStatus((e as Error).message || 'Verification error.');
+    } catch (err) {
+      setBiometricTestStatus(err instanceof Error ? err.message : 'Biometric test failed.');
     } finally {
       setIsTestingBiometric(false);
     }
   };
 
-  // Add Clerk Passkey
-  const handleAddPasskey = async () => {
-    if (!user) return;
-    setIsAddingPasskey(true);
-    setBiometricTestStatus(null);
-    try {
-      if (typeof user.createPasskey === 'function') {
-        await user.createPasskey();
-      }
-      await registerLocalBiometricCredential(
-        user.id,
-        user.primaryEmailAddress?.emailAddress || 'athlete@beyondlimits.app'
-      );
-      setBiometricLockEnabled(true);
-      setBiometricEnabled(true);
-      setBiometricTestStatus('Passkey & screen lock successfully registered with Clerk!');
-    } catch (err: unknown) {
-      const e = err as Error;
-      setBiometricTestStatus(e.message || 'Could not register passkey.');
-    } finally {
-      setIsAddingPasskey(false);
-    }
-  };
+  const currentRRIndex = getCurrentRoundRobinIndex();
 
   return (
     <div
@@ -280,7 +349,7 @@ export default function UserSettingsModal({
       aria-modal="true"
     >
       <div
-        className="w-full max-w-lg bg-white border border-slate-200 rounded-3xl p-6 sm:p-7 shadow-2xl space-y-6 my-8 text-slate-900"
+        className="w-full max-w-lg bg-white border border-slate-200 rounded-3xl p-5 sm:p-7 shadow-2xl space-y-6 my-8 text-slate-900"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
@@ -291,15 +360,15 @@ export default function UserSettingsModal({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-lg font-bold text-slate-900 tracking-tight">
-                  AI &amp; Gemini Settings
+                <h3 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">
+                  AI &amp; Jarvis Settings
                 </h3>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-50 text-teal-700 border border-teal-200/60">
-                  Custom Key
+                  Multi-Key
                 </span>
               </div>
               <p className="text-xs text-slate-500">
-                Configure your own Google Gemini API key
+                Round-robin keys, voice configuration &amp; biometric lock
               </p>
             </div>
           </div>
@@ -314,43 +383,6 @@ export default function UserSettingsModal({
           </button>
         </div>
 
-        {/* Step-by-Step Google AI Studio Card */}
-        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 sm:p-5 space-y-3.5">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-teal-700" />
-              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800">
-                Get Free API Key from Google
-              </h4>
-            </div>
-            <span className="text-[10px] text-teal-700 font-bold bg-teal-100/70 px-2 py-0.5 rounded-md border border-teal-200">
-              100% Free
-            </span>
-          </div>
-
-          <p className="text-xs text-slate-600 leading-relaxed">
-            Get a personal free Gemini API key to power your daily AI motivational coach and voice briefings directly from Google:
-          </p>
-
-          <ol className="text-xs text-slate-600 space-y-1.5 list-decimal list-inside pl-1">
-            <li>Click the button below to open <strong>Google AI Studio</strong>.</li>
-            <li>Sign in with your Google / Gmail account.</li>
-            <li>Click <strong>&quot;Create API key&quot;</strong> and copy your key.</li>
-            <li>Paste your key below and click <strong>Save Key</strong>.</li>
-          </ol>
-
-          <a
-            href="https://aistudio.google.com/app/apikey"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="w-full min-h-[44px] rounded-xl bg-teal-700 hover:bg-teal-800 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer"
-          >
-            <Key className="w-4 h-4" />
-            <span>Open Google AI Studio (Get Free Key)</span>
-            <ExternalLink className="w-3.5 h-3.5 ml-1" />
-          </a>
-        </div>
-
         {/* Status Toast */}
         {saveStatus && (
           <div className="p-3.5 rounded-2xl bg-teal-50 border border-teal-200 flex items-center gap-2 text-xs font-semibold text-teal-800">
@@ -359,293 +391,350 @@ export default function UserSettingsModal({
           </div>
         )}
 
-        {/* API Key Input Section */}
-        <div className="space-y-3">
-          <label className="text-xs font-bold text-slate-700 flex items-center justify-between">
-            <span className="flex items-center gap-1.5">
-              <ShieldCheck className="w-3.5 h-3.5 text-teal-700" />
-              <span>Your Gemini API Key</span>
+        {/* =========================================================================
+            SECTION 1: MULTI-KEY GEMINI API MANAGER (UP TO 10 KEYS, ROUND-ROBIN)
+            ========================================================================= */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Key className="w-4 h-4 text-teal-700" />
+              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800">
+                Gemini API Keys ({keysList.length}/{MAX_GEMINI_KEYS})
+              </h4>
+            </div>
+            <span className="text-[10px] font-bold px-2 py-0.5 bg-teal-100/70 text-teal-800 rounded-md border border-teal-200">
+              Round-Robin Active
             </span>
-            {apiKey && (
-              <span className="text-[10px] text-teal-700 font-mono font-bold bg-teal-50 px-2 py-0.5 rounded border border-teal-200/60">
-                Key Configured
-              </span>
-            )}
-          </label>
+          </div>
 
-          <div className="relative">
+          <p className="text-xs text-slate-600 leading-relaxed">
+            Add up to <strong>10 Gemini API keys</strong>. Requests dynamically rotate across your keys so your free quota never exhausts. If any key hits rate limits, Jarvis automatically fails over to the next key.
+          </p>
+
+          {/* Add Key Input */}
+          <div className="flex items-center gap-2">
             <input
-              type={showKey ? 'text' : 'password'}
-              value={apiKey}
-              onChange={(e) => {
-                setApiKey(e.target.value);
-                setVerificationResult(null);
-              }}
-              placeholder="Paste your AIzaSy... key here"
-              className="w-full px-4 py-3 pr-12 bg-slate-50 border border-slate-200 focus:border-teal-600 focus:bg-white rounded-xl text-sm font-mono text-slate-900 placeholder-slate-400 outline-none transition-all"
+              type="password"
+              value={newKeyInput}
+              onChange={(e) => setNewKeyInput(e.target.value)}
+              placeholder="Paste new Gemini API key (AIzaSy...)"
+              disabled={keysList.length >= MAX_GEMINI_KEYS}
+              className="flex-1 px-3.5 py-2.5 bg-slate-50 border border-slate-200 focus:border-teal-600 focus:bg-white rounded-xl text-xs font-mono text-slate-900 placeholder-slate-400 outline-none transition-all disabled:opacity-50"
             />
             <button
               type="button"
-              onClick={() => setShowKey(!showKey)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 p-1 cursor-pointer"
-              title={showKey ? 'Hide key' : 'Show key'}
+              onClick={handleAddKey}
+              disabled={!newKeyInput.trim() || keysList.length >= MAX_GEMINI_KEYS}
+              className="px-4 py-2.5 bg-teal-700 hover:bg-teal-800 disabled:bg-slate-200 disabled:text-slate-400 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
             >
-              {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              <Plus className="w-3.5 h-3.5" />
+              <span>Add Key</span>
             </button>
           </div>
 
-          {/* Verification Result Notice */}
-          {verificationResult && (
-            <div
-              className={`p-3 rounded-xl flex items-center gap-2 text-xs font-medium ${
-                verificationResult.valid
-                  ? 'bg-teal-50 border border-teal-200 text-teal-800'
-                  : 'bg-rose-50 border border-rose-200 text-rose-800'
-              }`}
-            >
-              {verificationResult.valid ? (
-                <CheckCircle2 className="w-4 h-4 text-teal-600 shrink-0" />
-              ) : (
-                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
-              )}
-              <span>{verificationResult.message}</span>
-            </div>
-          )}
+          {/* Keys List */}
+          <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
+            {keysList.length === 0 ? (
+              <div className="p-4 bg-slate-50 rounded-xl border border-dashed border-slate-300 text-center text-xs text-slate-500">
+                No custom keys added yet. The app is currently using the shared server key. Add your personal Google keys above for higher limits!
+              </div>
+            ) : (
+              keysList.map((keyStr, idx) => {
+                const isNextInRotation = keysList.length > 0 && idx === currentRRIndex % keysList.length;
+                const verification = keyVerificationResults[idx];
+                const isThisVerifying = keyVerifyingIndex === idx;
 
-          {/* Buttons: Test, Save, Clear */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
-            <button
-              type="button"
-              disabled={isVerifying || !apiKey.trim()}
-              onClick={handleVerifyKey}
-              className="min-h-[42px] px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-teal-700 border border-slate-200 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
-            >
-              {isVerifying ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              ) : (
-                <Zap className="w-3.5 h-3.5 text-teal-600" />
-              )}
-              <span>Test Key</span>
-            </button>
+                return (
+                  <div
+                    key={idx}
+                    className="p-3 bg-slate-50 hover:bg-slate-100/80 border border-slate-200 rounded-xl flex flex-col gap-2 transition-colors"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-200 text-slate-700 shrink-0">
+                          Key #{idx + 1}
+                        </span>
+                        {isNextInRotation && (
+                          <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 shrink-0">
+                            Next
+                          </span>
+                        )}
+                        <span className="font-mono text-xs text-slate-700 truncate">
+                          {keyStr.slice(0, 8)}••••••••{keyStr.slice(-4)}
+                        </span>
+                      </div>
 
-            <button
-              type="button"
-              disabled={isSaving}
-              onClick={handleSaveKey}
-              className="min-h-[42px] px-3 rounded-xl bg-teal-700 hover:bg-teal-800 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm disabled:opacity-50"
-            >
-              {isSaving ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              ) : (
-                <CheckCircle2 className="w-3.5 h-3.5" />
-              )}
-              <span>Save Key</span>
-            </button>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => handleVerifyIndividualKey(keyStr, idx)}
+                          disabled={isThisVerifying}
+                          className="px-2.5 py-1 text-[11px] font-semibold text-teal-700 bg-white border border-teal-200 hover:bg-teal-50 rounded-lg transition-colors cursor-pointer flex items-center gap-1"
+                        >
+                          {isThisVerifying ? (
+                            <Loader2 className="w-3 h-3 animate-spin text-teal-600" />
+                          ) : (
+                            <RefreshCw className="w-3 h-3" />
+                          )}
+                          <span>Test</span>
+                        </button>
 
-            <button
-              type="button"
-              onClick={handleClearKey}
-              className="min-h-[42px] px-3 rounded-xl bg-slate-100 hover:bg-rose-50 hover:text-rose-700 text-slate-600 border border-slate-200 text-xs font-medium flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveKey(idx)}
+                          className="p-1 text-slate-400 hover:text-rose-600 rounded-lg transition-colors cursor-pointer"
+                          title="Remove Key"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {verification && (
+                      <div
+                        className={`text-[10px] font-medium flex items-center gap-1.5 ${
+                          verification.valid ? 'text-emerald-700' : 'text-rose-700'
+                        }`}
+                      >
+                        {verification.valid ? (
+                          <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
+                        ) : (
+                          <AlertCircle className="w-3 h-3 text-rose-600 shrink-0" />
+                        )}
+                        <span>{verification.message}</span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          <div className="flex items-center justify-between pt-1">
+            <a
+              href="https://aistudio.google.com/app/apikey"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[11px] font-semibold text-teal-700 hover:underline flex items-center gap-1"
             >
-              <Trash2 className="w-3.5 h-3.5" />
-              <span>Clear</span>
-            </button>
+              <span>Get more free keys on Google AI Studio</span>
+              <ExternalLink className="w-3 h-3" />
+            </a>
           </div>
         </div>
 
-        {/* Autonomous Agent & Wake-Up Word Settings Card */}
-        <div className="bg-emerald-50/70 border border-emerald-200 rounded-2xl p-4 sm:p-5 space-y-3">
+        {/* =========================================================================
+            SECTION 2: JARVIS VOICE CONFIGURATION & REAL-TIME DEMO
+            ========================================================================= */}
+        <div className="space-y-4 pt-3 border-t border-slate-100">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Bot className="w-4 h-4 text-emerald-700" />
-              <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-950">
-                Autonomous Agent Wake-Up Word
+              <Volume2 className="w-4 h-4 text-teal-700" />
+              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800">
+                Jarvis Voice Persona &amp; Audio Demo
               </h4>
             </div>
-            <span className="text-[10px] text-emerald-800 font-bold bg-emerald-100 px-2 py-0.5 rounded-md border border-emerald-300">
-              Voice Trigger
+            <span className="text-[10px] font-bold text-slate-500">
+              Neural Text-to-Speech
             </span>
           </div>
 
-          <p className="text-xs text-emerald-900 leading-relaxed">
-            When Agent Mode is toggled <strong>ON</strong> on your dashboard, your microphone continuously listens. Speak your wake-up word to activate the 3D Arc Reactor and interact hands-free:
-          </p>
-
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-            <div className="relative flex-1">
-              <input
-                type="text"
-                value={wakeUpWord}
-                onChange={(e) => setWakeUpWord(e.target.value)}
-                placeholder="e.g. Jarvis"
-                className="w-full px-3.5 py-2.5 bg-white border border-emerald-300 focus:border-emerald-600 rounded-xl text-xs sm:text-sm font-bold text-emerald-950 outline-none"
-              />
+          {/* Voice Selector */}
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-slate-700 block">
+              Select Voice Tone:
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {JARVIS_VOICE_OPTIONS.map((voice) => {
+                const isSelected = voice.id === selectedVoiceId;
+                return (
+                  <button
+                    key={voice.id}
+                    type="button"
+                    onClick={() => handleSaveVoice(voice.id)}
+                    className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                      isSelected
+                        ? 'bg-teal-50 border-teal-600 text-teal-950 ring-1 ring-teal-500'
+                        : 'bg-slate-50 border-slate-200 text-slate-800 hover:bg-slate-100'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold">{voice.name}</span>
+                      <span className="text-[9px] uppercase px-1.5 py-0.2 rounded bg-slate-200 text-slate-700">
+                        {voice.gender}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-slate-500 mt-0.5 line-clamp-1">
+                      {voice.subtitle}
+                    </p>
+                  </button>
+                );
+              })}
             </div>
+          </div>
+
+          {/* Speed / Rate Slider */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-semibold text-slate-700">Speech Rate / Speed:</span>
+              <span className="font-mono text-teal-700 font-bold">{voiceRate.toFixed(2)}x</span>
+            </div>
+            <input
+              type="range"
+              min="0.85"
+              max="1.25"
+              step="0.05"
+              value={voiceRate}
+              onChange={(e) => handleSaveRate(parseFloat(e.target.value))}
+              className="w-full accent-teal-600 cursor-pointer"
+            />
+          </div>
+
+          {/* Voice Demo Preview Player */}
+          <div className="p-3 bg-slate-900 text-white rounded-2xl flex items-center justify-between gap-3 shadow-md">
+            <div>
+              <p className="text-xs font-bold text-white flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-teal-400" />
+                <span>Audio Preview: {JARVIS_VOICE_OPTIONS.find((v) => v.id === selectedVoiceId)?.name}</span>
+              </p>
+              <p className="text-[10px] text-slate-400 mt-0.5">
+                Tap to hear how Jarvis speaks your motivation &amp; chat responses
+              </p>
+            </div>
+
             <button
               type="button"
-              onClick={() => handleSaveWakeWord()}
-              className="min-h-[40px] px-4 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm"
+              onClick={handlePlayVoiceDemo}
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                isPlayingDemo
+                  ? 'bg-amber-500 hover:bg-amber-600 text-slate-950 animate-pulse'
+                  : 'bg-teal-500 hover:bg-teal-400 text-slate-950 shadow-md shadow-teal-500/30'
+              }`}
             >
-              <Mic className="w-3.5 h-3.5" />
-              <span>Save Word</span>
+              {isPlayingDemo ? (
+                <>
+                  <Square className="w-3.5 h-3.5 fill-current" />
+                  <span>Stop</span>
+                </>
+              ) : (
+                <>
+                  <Play className="w-3.5 h-3.5 fill-current" />
+                  <span>Play Demo</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* =========================================================================
+            SECTION 3: WAKE-UP WORD & AGENT ACTIVATION
+            ========================================================================= */}
+        <div className="space-y-3 pt-3 border-t border-slate-100">
+          <div className="flex items-center gap-2">
+            <Mic className="w-4 h-4 text-teal-700" />
+            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800">
+              Agent Wake-Up Word
+            </h4>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              value={wakeUpWord}
+              onChange={(e) => setWakeUpWord(e.target.value)}
+              placeholder="Jarvis"
+              className="flex-1 px-3.5 py-2.5 bg-slate-50 border border-slate-200 focus:border-teal-600 focus:bg-white rounded-xl text-xs font-bold text-slate-900 outline-none"
+            />
+            <button
+              type="button"
+              onClick={handleSaveWakeUpWord}
+              className="px-4 py-2.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer shrink-0"
+            >
+              Save Word
             </button>
           </div>
 
-          {/* Quick presets */}
-          <div className="flex items-center gap-1.5 flex-wrap pt-1 text-[11px] text-emerald-900">
-            <span className="text-emerald-700 font-medium">Quick Choices:</span>
-            {['Jarvis', 'Friday', 'Coach', 'Titan'].map((preset) => (
-              <button
-                key={preset}
-                type="button"
-                onClick={() => handleSaveWakeWord(preset)}
-                className={`px-2 py-0.5 rounded-lg border text-xs font-semibold cursor-pointer transition-colors ${
-                  wakeUpWord.toLowerCase() === preset.toLowerCase()
-                    ? 'bg-emerald-700 text-white border-emerald-700'
-                    : 'bg-white hover:bg-emerald-100 text-emerald-800 border-emerald-300'
-                }`}
-              >
-                {preset}
-              </button>
-            ))}
-          </div>
-
           {wakeWordSaveStatus && (
-            <div className="p-2 rounded-xl bg-emerald-100 border border-emerald-300 text-xs font-semibold text-emerald-900 flex items-center gap-1.5">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
-              <span>{wakeWordSaveStatus}</span>
-            </div>
+            <p className="text-[11px] font-semibold text-teal-700">
+              {wakeWordSaveStatus}
+            </p>
           )}
         </div>
 
-        {/* Biometric & Screen Lock Security Card (Clerk Passkeys) */}
-        <div className="bg-slate-900 text-white rounded-2xl p-4 sm:p-5 space-y-4 border border-emerald-500/30 shadow-lg">
+        {/* =========================================================================
+            SECTION 4: BIOMETRIC SCREEN LOCK SECURITY
+            ========================================================================= */}
+        <div className="space-y-3 pt-3 border-t border-slate-100">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                <Fingerprint className="w-5 h-5" />
-              </div>
+            <div className="flex items-center gap-2">
+              <Fingerprint className="w-4 h-4 text-emerald-600" />
               <div>
-                <h4 className="text-sm font-bold text-white flex items-center gap-1.5">
-                  <span>Screen Lock &amp; Biometrics</span>
-                  <span className="text-[10px] bg-emerald-500/20 text-emerald-300 font-bold px-1.5 py-0.5 rounded border border-emerald-500/30 uppercase">
-                    Clerk Passkey
-                  </span>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800">
+                  App Lock (Fingerprint / Screen Lock)
                 </h4>
-                <p className="text-[11px] text-slate-400">
-                  Verify with fingerprint or screen lock on app launch
+                <p className="text-[11px] text-slate-500">
+                  Require device authentication before launching app
                 </p>
               </div>
             </div>
 
-            {/* Toggle Switch */}
             <button
               type="button"
               role="switch"
               aria-checked={biometricEnabled}
               onClick={() => handleToggleBiometric(!biometricEnabled)}
-              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                biometricEnabled ? 'bg-emerald-500' : 'bg-slate-700'
+              className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors cursor-pointer ${
+                biometricEnabled ? 'bg-emerald-500' : 'bg-slate-300'
               }`}
             >
-              <span
-                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+              <div
+                className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
                   biometricEnabled ? 'translate-x-5' : 'translate-x-0'
                 }`}
               />
             </button>
           </div>
 
-          <div className="p-3 rounded-xl bg-slate-950/70 border border-slate-800 text-xs text-slate-300 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-slate-400">Device Biometrics:</span>
-              <span className={`font-semibold ${biometricSupported ? 'text-emerald-400' : 'text-amber-400'}`}>
-                {biometricSupported ? 'Supported (Fingerprint / Face ID)' : 'Standard Screen Lock'}
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-slate-400">Registered Clerk Passkeys:</span>
-              <span className="font-semibold text-white">
-                {user?.passkeys?.length ?? 0} credential{(user?.passkeys?.length ?? 0) === 1 ? '' : 's'}
-              </span>
-            </div>
-          </div>
+          {biometricEnabled && (
+            <div className="p-3 bg-emerald-50 border border-emerald-200/60 rounded-xl space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] text-emerald-800 font-semibold">
+                  Hardware Authentication Active
+                </span>
+                <button
+                  type="button"
+                  onClick={handleTestBiometric}
+                  disabled={isTestingBiometric}
+                  className="px-2.5 py-1 text-[10px] font-bold text-emerald-800 bg-white border border-emerald-300 rounded-lg hover:bg-emerald-100 transition-colors cursor-pointer flex items-center gap-1"
+                >
+                  {isTestingBiometric ? (
+                    <Loader2 className="w-3 h-3 animate-spin text-emerald-600" />
+                  ) : (
+                    <Fingerprint className="w-3 h-3 text-emerald-600" />
+                  )}
+                  <span>Test Sensor</span>
+                </button>
+              </div>
 
-          {biometricTestStatus && (
-            <div className="p-2.5 rounded-xl bg-slate-950 border border-emerald-500/40 text-xs font-medium text-emerald-300 flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-              <span>{biometricTestStatus}</span>
+              {biometricTestStatus && (
+                <p className="text-[10px] font-medium text-emerald-900">
+                  {biometricTestStatus}
+                </p>
+              )}
             </div>
           )}
-
-          <div className="flex flex-col sm:flex-row items-center gap-2 pt-1">
-            <button
-              type="button"
-              onClick={handleTestBiometric}
-              disabled={isTestingBiometric}
-              className="w-full sm:flex-1 min-h-[38px] px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50 border border-slate-700"
-            >
-              {isTestingBiometric ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-400" />
-              ) : (
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-              )}
-              <span>Test Screen Lock</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={handleAddPasskey}
-              disabled={isAddingPasskey}
-              className="w-full sm:flex-1 min-h-[38px] px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50 shadow-md shadow-emerald-500/20"
-            >
-              {isAddingPasskey ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              ) : (
-                <Fingerprint className="w-3.5 h-3.5" />
-              )}
-              <span>Register Passkey</span>
-            </button>
-          </div>
         </div>
 
-        {/* Fallback Architecture Card */}
-        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-2 text-xs">
-          <div className="font-bold text-slate-800 flex items-center gap-2">
-            <Zap className="w-3.5 h-3.5 text-amber-600" />
-            <span>Automatic Redundancy &amp; Fallback</span>
-          </div>
-          <div className="space-y-1.5 text-slate-600">
-            <p className="flex items-start gap-2">
-              <span className="text-teal-700 font-bold">1.</span>
-              <span><strong>Your Key First:</strong> When set, your phone will prioritize your personal Gemini API key for coach replies.</span>
-            </p>
-            <p className="flex items-start gap-2">
-              <span className="text-teal-700 font-bold">2.</span>
-              <span><strong>Server Fallback:</strong> If your key runs out of quota, has rate limits, or is empty, BeyondLimits automatically falls back to our Vercel server key so you never experience interruptions!</span>
-            </p>
-          </div>
+        {/* Modal Footer */}
+        <div className="pt-2 border-t border-slate-100 flex items-center justify-end">
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-teal-700 hover:bg-teal-800 text-white font-bold text-xs transition-colors cursor-pointer shadow-sm"
+          >
+            Done / Close Settings
+          </button>
         </div>
-
-        {/* Navigation to Profile */}
-        {onOpenProfile && (
-          <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
-            <span className="text-xs text-slate-500">
-              Need to update your age, height, or blood group?
-            </span>
-            <button
-              type="button"
-              onClick={() => {
-                onClose();
-                onOpenProfile();
-              }}
-              className="text-xs font-bold text-teal-700 hover:text-teal-800 flex items-center gap-1 cursor-pointer"
-            >
-              <User className="w-3.5 h-3.5" />
-              <span>Open Profile</span>
-            </button>
-          </div>
-        )}
       </div>
     </div>
   );
