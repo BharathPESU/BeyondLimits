@@ -17,6 +17,7 @@ export async function POST(request: NextRequest) {
 
     const ai = new GoogleGenAI({
       apiKey,
+      apiVersion: 'v1beta',
       httpOptions: {
         headers: {
           'User-Agent': 'beyondlimits-verify-key',
@@ -25,24 +26,40 @@ export async function POST(request: NextRequest) {
     });
 
     const startTime = Date.now();
-    const res = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: 'Respond with exactly: OK',
-      config: {
-        maxOutputTokens: 10,
-        temperature: 0.1,
-      },
-    });
+    let text = '';
+    let usedModel = 'gemini-2.5-flash';
+
+    try {
+      const res = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: 'Respond with exactly: OK',
+        config: {
+          maxOutputTokens: 200,
+          temperature: 0.1,
+        },
+      });
+      text = res.text?.trim() || '';
+    } catch {
+      usedModel = 'gemini-3.5-flash-lite';
+      const res = await ai.models.generateContent({
+        model: 'gemini-3.5-flash-lite',
+        contents: 'Respond with exactly: OK',
+        config: {
+          maxOutputTokens: 200,
+          temperature: 0.1,
+        },
+      });
+      text = res.text?.trim() || '';
+    }
 
     const latencyMs = Date.now() - startTime;
-    const text = res.text?.trim() || '';
 
     if (text) {
       return NextResponse.json({
         valid: true,
         latencyMs,
-        model: 'gemini-2.5-flash',
-        message: `Key verified successfully! Response in ${latencyMs}ms.`,
+        model: usedModel,
+        message: `Key verified successfully with Google (${usedModel})! Response in ${latencyMs}ms.`,
       });
     } else {
       return NextResponse.json(
@@ -56,4 +73,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ valid: false, error: errMsg }, { status: 400 });
   }
 }
-

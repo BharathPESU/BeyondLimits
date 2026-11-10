@@ -26,6 +26,7 @@ import {
   TechNewsItem,
   UserProgressStats,
   WeeklyAchievementComparison,
+  MotivationalChatMessage,
 } from './types';
 
 interface ResolvedDbConfig {
@@ -51,6 +52,7 @@ interface StoredSchemaState {
   reminderLogs: ReminderLogEntry[];
   nextAttendanceId: number;
   nextReminderLogId: number;
+  chatHistory?: Record<string, MotivationalChatMessage[]>;
 }
 
 const DEFAULT_TECH_NEWS_ITEMS: TechNewsItem[] = [
@@ -544,6 +546,7 @@ function loadStore(): { store: StoredSchemaState; config: ResolvedDbConfig } {
           typeof parsed.nextReminderLogId === 'number'
             ? parsed.nextReminderLogId
             : 1,
+        chatHistory: parsed.chatHistory || {},
       };
       return { store: memoryStore, config };
     }
@@ -1386,4 +1389,21 @@ export function saveDailyTechNews(
   store.dailyTechNews[record.date] = saved;
   persistStore(store, config);
   return saved;
+}
+
+export function getUserChatHistory(userId = 'default'): MotivationalChatMessage[] {
+  const { store } = loadStore();
+  return store.chatHistory?.[userId] || [];
+}
+
+export function saveUserChatHistory(
+  userId = 'default',
+  messages: MotivationalChatMessage[]
+): void {
+  const { store, config } = loadStore();
+  if (!store.chatHistory) {
+    store.chatHistory = {};
+  }
+  store.chatHistory[userId] = messages.slice(-50);
+  persistStore(store, config);
 }

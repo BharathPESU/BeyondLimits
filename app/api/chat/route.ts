@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
 import { z } from 'zod';
-import { getDashboardPayload } from '@/lib/db';
+import { getDashboardPayload, getUserChatHistory, saveUserChatHistory } from '@/lib/db';
 import {
   DATABASE_SCHEMA_DESCRIPTION,
   queryUserAttendanceByDate,
@@ -10,9 +10,9 @@ import {
   queryUserWorkoutUpdates,
   queryUserAchievements,
   queryUserProfileDetails,
-  executeSafeReadOnlyQuery,
 } from '@/lib/agent-database-service';
 import { getEvolvedAgentSystemPrompt } from '@/lib/agent-prompt-evolution';
+import { MotivationalChatMessage } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -113,6 +113,15 @@ function detectDateInQuery(message: string): string | null {
   return null;
 }
 
+export async function GET() {
+  try {
+    const history = getUserChatHistory('default');
+    return NextResponse.json({ history }, { status: 200 });
+  } catch (error) {
+    return NextResponse.json({ history: [] }, { status: 200 });
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => ({}));
@@ -137,10 +146,10 @@ export async function POST(request: NextRequest) {
     const athleteName = customUserName || dashboard.userStats.userName || 'Bharath';
     const uStats = dashboard.userStats;
 
-    // Build recent conversation transcript
+    // Build multi-turn conversational transcript memory
     const recentHistoryText = history
-      .slice(-4)
-      .map((h) => `${h.role === 'user' ? 'Athlete' : 'Agent'}: ${h.content}`)
+      .slice(-8)
+      .map((h) => `[${h.role === 'user' ? athleteName : 'JARVIS Agent'}]: ${h.content}`)
       .join('\n');
 
     let dbQueryDetails: {
@@ -162,10 +171,16 @@ export async function POST(request: NextRequest) {
       const lowerMsg = message.toLowerCase();
       const detectedDate = detectDateInQuery(message);
 
-      if (detectedDate || lowerMsg.includes('day') || lowerMsg.includes('relapse') || lowerMsg.includes('masturbat')) {
+      if (
+        detectedDate ||
+        lowerMsg.includes('day') ||
+        lowerMsg.includes('relapse') ||
+        lowerMsg.includes('masturbat') ||
+        lowerMsg.includes('slip')
+      ) {
         const queryDate = detectedDate || 'today';
         const attendanceRes = await queryUserAttendanceByDate(queryDate);
-        databaseContext += `\n[VERIFIED READ-ONLY DATABASE QUERY: attendance_logs for ${attendanceRes.date}]\n${attendanceRes.summary}\n`;
+        databaseContext += `\n[VERIFIED DATABASE RECORD: attendance_logs for ${attendanceRes.date}]\n${attendanceRes.summary}\n`;
         dbQueryDetails = {
           queryType: 'get_attendance_by_date',
           targetDate: attendanceRes.date,
@@ -182,7 +197,7 @@ export async function POST(request: NextRequest) {
         lowerMsg.includes('squat')
       ) {
         const workoutRes = await queryUserWorkoutUpdates();
-        databaseContext += `\n[VERIFIED READ-ONLY DATABASE QUERY: workout_sessions]\n${workoutRes.summary}\n`;
+        databaseContext += `\n[VERIFIED DATABASE RECORD: workout_sessions]\n${workoutRes.summary}\n`;
         if (!dbQueryDetails) {
           dbQueryDetails = {
             queryType: 'get_workout_and_exercise_updates',
@@ -200,7 +215,7 @@ export async function POST(request: NextRequest) {
         lowerMsg.includes('streak')
       ) {
         const achieveRes = await queryUserAchievements();
-        databaseContext += `\n[VERIFIED READ-ONLY DATABASE QUERY: challenges_catalog & badges_catalog]\n${achieveRes.summary}\n`;
+        databaseContext += `\n[VERIFIED DATABASE RECORD: challenges_catalog & badges_catalog]\n${achieveRes.summary}\n`;
         if (!dbQueryDetails) {
           dbQueryDetails = {
             queryType: 'get_achievements_and_challenges',
@@ -219,7 +234,7 @@ export async function POST(request: NextRequest) {
         lowerMsg.includes('pattern')
       ) {
         const insightsRes = await queryUserRelapseInsights();
-        databaseContext += `\n[VERIFIED READ-ONLY DATABASE QUERY: relapse_patterns & triggers]\n${insightsRes.summary}\n`;
+        databaseContext += `\n[VERIFIED DATABASE RECORD: relapse_patterns & triggers]\n${insightsRes.summary}\n`;
         if (!dbQueryDetails) {
           dbQueryDetails = {
             queryType: 'get_relapse_insights',
@@ -231,7 +246,7 @@ export async function POST(request: NextRequest) {
 
       if (!databaseContext) {
         // Fallback default snapshot for general queries
-        databaseContext = `\n[VERIFIED DATABASE SNAPSHOT]\n- Current Clean Streak: ${uStats.currentStreak} days\n- Monthly Clean Rate: ${uStats.monthlyDisciplineRate}%\n- Total Days Marked: ${uStats.totalMarkedDays}\n- Primary Relapse Reason on Record: Lying lazy in room scrolling phone late.\n`;
+        databaseContext = `\n[VERIFIED DATABASE SNAPSHOT]\n- Current Clean Streak: ${uStats.currentStreak} days\n- Monthly Clean Rate: ${uStats.monthlyDisciplineRate}%\n- Total Days Marked: ${uStats.totalMarkedDays}\n`;
       }
     } else {
       // Standard Discipline Coach prompt
@@ -246,19 +261,22 @@ Core Directive:
 Current Clean Streak: ${uStats.currentStreak} clean days
 Monthly Self-Control Rate: ${uStats.monthlyDisciplineRate}%
 ${databaseContext ? `\nVerified Read-Only Database Fact:\n${databaseContext}` : ''}
-${recentHistoryText ? `\nRecent Conversation:\n${recentHistoryText}\n` : ''}
-Athlete's New Statement: "${message}"
+${recentHistoryText ? `\n=== PREVIOUS CONVERSATION MEMORY ===\n${recentHistoryText}\n` : ''}
+=== CURRENT ATHLETE QUESTION ===
+${athleteName}: "${message}"
 
 Directives for Response:
 1. Address the athlete by name (${athleteName}) if natural.
-2. Directly answer their question using the verified database records above.
-3. If they slipped/masturbated on the date in question, state the exact reason they logged, give strong moral grounding, and passionately build their confidence to conquer today.
-4. If they asked about workout/achievements, state their exact streak and missing challenges.
-5. STRICT CHARACTER LIMIT: Under 480 characters total. Spoken punchy sentences only.`;
+2. Remember previous conversation context if the athlete is following up.
+3. Directly answer their question using the verified database records above.
+4. If they slipped/masturbated on the date in question, state the exact reason they logged, give strong moral grounding, and passionately build their confidence to conquer today.
+5. If they asked about workout/achievements, state their exact streak and missing challenges.
+6. STRICT CHARACTER LIMIT: Under 480 characters total. Spoken punchy sentences only.`;
 
     const generateWithKey = async (key: string): Promise<string> => {
       const ai = new GoogleGenAI({
         apiKey: key,
+        apiVersion: 'v1beta',
         httpOptions: {
           headers: {
             'User-Agent': 'beyondlimits-agent',
@@ -266,6 +284,7 @@ Directives for Response:
         },
       });
 
+      // Cascade sequence: gemini-2.5-flash -> gemini-3.5-flash-lite -> gemini-3.8-flash
       try {
         const response = await ai.models.generateContent({
           model: 'gemini-2.5-flash',
@@ -273,19 +292,36 @@ Directives for Response:
           config: {
             systemInstruction,
             temperature: 0.7,
+            maxOutputTokens: 600,
           },
         });
         return response.text || '';
-      } catch {
-        const response = await ai.models.generateContent({
-          model: 'gemini-2.0-flash',
-          contents: finalPrompt,
-          config: {
-            systemInstruction,
-            temperature: 0.7,
-          },
-        });
-        return response.text || '';
+      } catch (err1) {
+        console.warn('gemini-2.5-flash failed, attempting gemini-3.5-flash-lite:', err1);
+        try {
+          const response = await ai.models.generateContent({
+            model: 'gemini-3.5-flash-lite',
+            contents: finalPrompt,
+            config: {
+              systemInstruction,
+              temperature: 0.7,
+              maxOutputTokens: 600,
+            },
+          });
+          return response.text || '';
+        } catch (err2) {
+          console.warn('gemini-3.5-flash-lite failed, attempting gemini-3.8-flash:', err2);
+          const response = await ai.models.generateContent({
+            model: 'gemini-3.8-flash',
+            contents: finalPrompt,
+            config: {
+              systemInstruction,
+              temperature: 0.7,
+              maxOutputTokens: 600,
+            },
+          });
+          return response.text || '';
+        }
       }
     };
 
@@ -294,7 +330,7 @@ Directives for Response:
       'deterministic-fallback';
 
     // Step 1: User's personal Gemini API key
-    if (userApiKey && userApiKey.startsWith('AIzaSy')) {
+    if (userApiKey && userApiKey.length >= 10) {
       try {
         rawReply = await generateWithKey(userApiKey);
         if (rawReply) {
@@ -317,7 +353,7 @@ Directives for Response:
       }
     }
 
-    // Step 3: Deterministic high-impact fallback
+    // Step 3: Deterministic high-impact fallback (only if both keys fail completely)
     if (!rawReply) {
       if (agentMode && dbQueryDetails) {
         rawReply = enforceMax480Chars(
@@ -332,6 +368,38 @@ Directives for Response:
     }
 
     const finalReply = enforceMax480Chars(rawReply);
+
+    // Save turn to SQLite/JSON backend chat history
+    try {
+      const nowStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const newMessages: MotivationalChatMessage[] = [
+        ...history.slice(-20).map((h, i) => ({
+          id: `hist-${Date.now()}-${i}`,
+          role: h.role,
+          content: h.content,
+          charCount: h.content.length,
+          createdAt: nowStr,
+        })),
+        {
+          id: `user-${Date.now()}`,
+          role: 'user',
+          content: message,
+          charCount: message.length,
+          createdAt: nowStr,
+          agentMode,
+        },
+        {
+          id: `agent-${Date.now()}`,
+          role: 'assistant',
+          content: finalReply,
+          charCount: finalReply.length,
+          createdAt: nowStr,
+          agentMode,
+          dbQueryDetails,
+        },
+      ];
+      saveUserChatHistory('default', newMessages);
+    } catch {}
 
     return NextResponse.json(
       {

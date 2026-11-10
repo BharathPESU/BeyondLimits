@@ -102,6 +102,7 @@ export default function DisciplineDashboardClient({
   const [agentVoiceStatus, setAgentVoiceStatus] = useState<string>('');
   const [agentTranscript, setAgentTranscript] = useState<string>('');
 
+  // Dual-Tier Conversation Memory: Hydrate from localStorage on device
   const [chatMessages, setChatMessages] = useState<MotivationalChatMessage[]>([
     {
       id: 'welcome-agent',
@@ -119,6 +120,7 @@ export default function DisciplineDashboardClient({
   const wakeUpWordRef = useRef<string>('Jarvis');
   const isProcessingWakeWordRef = useRef<boolean>(false);
   const displayNameRef = useRef<string>(displayName);
+  const restartRetriesRef = useRef<number>(0);
 
   useEffect(() => {
     displayNameRef.current = displayName;
@@ -132,7 +134,7 @@ export default function DisciplineDashboardClient({
     wakeUpWordRef.current = wakeUpWord;
   }, [wakeUpWord]);
 
-  // Synchronize Agent Mode & Wake Word with localStorage
+  // Hydrate Agent Mode, Wake Word, and Chat History from localStorage
   useEffect(() => {
     try {
       const savedMode = localStorage.getItem('beyondlimits_agent_mode');
@@ -143,30 +145,51 @@ export default function DisciplineDashboardClient({
       if (savedWord) {
         setWakeUpWord(savedWord);
       }
+      const savedHistory = localStorage.getItem('beyondlimits_chat_history_v2');
+      if (savedHistory) {
+        const parsed = JSON.parse(savedHistory);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setChatMessages(parsed);
+        }
+      }
     } catch {}
 
-    const handleConfigChanged = () => {
-      try {
-        const savedMode = localStorage.getItem('beyondlimits_agent_mode');
-        setIsAgentMode(savedMode === 'true');
-        const savedWord = localStorage.getItem('beyondlimits_wakeup_word');
-        if (savedWord) {
-          setWakeUpWord(savedWord);
-        }
-      } catch {}
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'beyondlimits_agent_mode') {
+        setIsAgentMode(e.newValue === 'true');
+      }
+      if (e.key === 'beyondlimits_wakeup_word' && e.newValue) {
+        setWakeUpWord(e.newValue);
+      }
+      if (e.key === 'beyondlimits_chat_history_v2' && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          if (Array.isArray(parsed)) setChatMessages(parsed);
+        } catch {}
+      }
     };
 
-    window.addEventListener('beyondlimits_agent_config_changed', handleConfigChanged);
-    return () =>
-      window.removeEventListener('beyondlimits_agent_config_changed', handleConfigChanged);
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
   }, []);
+
+  // Persist chat messages to localStorage on device
+  useEffect(() => {
+    try {
+      if (typeof window !== 'undefined' && chatMessages.length > 0) {
+        localStorage.setItem(
+          'beyondlimits_chat_history_v2',
+          JSON.stringify(chatMessages.slice(-50))
+        );
+      }
+    } catch {}
+  }, [chatMessages]);
 
   const handleToggleAgentMode = useCallback(() => {
     setIsAgentMode((prev) => {
       const nextVal = !prev;
       try {
         localStorage.setItem('beyondlimits_agent_mode', String(nextVal));
-        window.dispatchEvent(new Event('beyondlimits_agent_config_changed'));
       } catch {}
       return nextVal;
     });
@@ -178,7 +201,6 @@ export default function DisciplineDashboardClient({
     setWakeUpWord(trimmed);
     try {
       localStorage.setItem('beyondlimits_wakeup_word', trimmed);
-      window.dispatchEvent(new Event('beyondlimits_agent_config_changed'));
     } catch {}
   }, []);
 
@@ -672,6 +694,7 @@ export default function DisciplineDashboardClient({
         recognition.interimResults = true;
 
         recognition.onstart = () => {
+          restartRetriesRef.current = 0;
           setAgentVoiceStatus(`Listening for "${wakeUpWordRef.current}"...`);
         };
 
@@ -810,8 +833,11 @@ export default function DisciplineDashboardClient({
           }
         };
 
-        recognition.onerror = () => {
-          // Keep listening
+        recognition.onerror = (e: any) => {
+          if (e?.error === 'not-allowed' || e?.error === 'service-not-allowed') {
+            isActive = false;
+            setAgentVoiceStatus('Microphone blocked. Allow mic access in browser.');
+          }
         };
 
         recognition.onend = () => {
@@ -821,9 +847,12 @@ export default function DisciplineDashboardClient({
             !isProcessingWakeWordRef.current &&
             !isSpeaking
           ) {
-            setTimeout(() => {
-              startContinuous();
-            }, 500);
+            restartRetriesRef.current += 1;
+            if (restartRetriesRef.current < 25) {
+              setTimeout(() => {
+                startContinuous();
+              }, 600);
+            }
           }
         };
 
@@ -1080,8 +1109,13 @@ export default function DisciplineDashboardClient({
               {/* Agent Mode Toggle Button */}
               <button
                 type="button"
-                onClick={handleToggleAgentMode}
-                className={`min-h-[40px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl transition-all cursor-pointer ${
+                role="switch"
+                aria-checked={isAgentMode}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleToggleAgentMode();
+                }}
+                className={`min-h-[40px] inline-flex items-center gap-2 px-3 py-1.5 text-xs font-bold rounded-xl transition-all cursor-pointer select-none ${
                   isAgentMode
                     ? 'bg-emerald-500 text-slate-950 hover:bg-emerald-400 ring-2 ring-emerald-400/50 shadow-lg shadow-emerald-500/20'
                     : 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700'
@@ -1090,9 +1124,18 @@ export default function DisciplineDashboardClient({
               >
                 <Bot className="w-4 h-4" />
                 <span>Agent: {isAgentMode ? 'ON' : 'OFF'}</span>
-                {isAgentMode && (
-                  <span className="w-2 h-2 rounded-full bg-slate-950 animate-ping ml-0.5" />
-                )}
+                {/* Visual tactile slider toggle */}
+                <div
+                  className={`w-7 h-3.5 rounded-full p-0.5 transition-colors flex items-center ${
+                    isAgentMode ? 'bg-slate-950 justify-end' : 'bg-slate-700 justify-start'
+                  }`}
+                >
+                  <div
+                    className={`w-2.5 h-2.5 rounded-full transition-transform ${
+                      isAgentMode ? 'bg-emerald-400' : 'bg-slate-400'
+                    }`}
+                  />
+                </div>
               </button>
             </div>
           </div>

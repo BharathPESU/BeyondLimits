@@ -15,6 +15,7 @@ import {
   Edit3,
   Check,
   Zap,
+  Trash2,
 } from 'lucide-react';
 import { MotivationalChatMessage } from '@/lib/types';
 
@@ -146,7 +147,7 @@ export default function MotivationalChatModal({
       );
 
       try {
-        const historyPayload = messages.slice(-6).map((m) => ({
+        const historyPayload = messages.slice(-10).map((m) => ({
           role: m.role,
           content: m.content,
         }));
@@ -384,16 +385,59 @@ export default function MotivationalChatModal({
             {/* Agent Mode Toggle Switch */}
             <button
               type="button"
-              onClick={onToggleAgentMode}
-              className={`min-h-[38px] px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+              role="switch"
+              aria-checked={isAgentMode}
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleAgentMode();
+              }}
+              className={`min-h-[38px] px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer select-none ${
                 isAgentMode
-                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm ring-2 ring-emerald-400/40'
+                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-md ring-2 ring-emerald-400/40'
                   : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
               }`}
               title="Toggle Agent Mode: Enables database query execution and personalized system prompt evolution"
             >
               <Bot className="w-3.5 h-3.5" />
               <span>Agent: {isAgentMode ? 'ON' : 'OFF'}</span>
+              <div
+                className={`w-7 h-3.5 rounded-full p-0.5 transition-colors flex items-center ${
+                  isAgentMode ? 'bg-emerald-950 justify-end' : 'bg-slate-300 justify-start'
+                }`}
+              >
+                <div
+                  className={`w-2.5 h-2.5 rounded-full transition-transform ${
+                    isAgentMode ? 'bg-emerald-300' : 'bg-white'
+                  }`}
+                />
+              </div>
+            </button>
+
+            {/* Clear History Button */}
+            <button
+              type="button"
+              onClick={() => {
+                if (confirm('Clear entire conversation history?')) {
+                  setMessages([
+                    {
+                      id: `reset-${Date.now()}`,
+                      role: 'assistant',
+                      content: 'Conversation history reset. How can I assist you today?',
+                      charCount: 52,
+                      createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                      agentMode: isAgentMode,
+                    },
+                  ]);
+                  try {
+                    localStorage.removeItem('beyondlimits_chat_history_v2');
+                  } catch {}
+                }
+              }}
+              title="Clear Conversation History"
+              className="min-h-[38px] px-2.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 border border-slate-200 text-xs flex items-center gap-1 transition-colors cursor-pointer"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Clear</span>
             </button>
 
             {/* Wake Word Pill */}
