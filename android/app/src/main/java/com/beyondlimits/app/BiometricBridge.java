@@ -25,12 +25,20 @@ public class BiometricBridge {
     @JavascriptInterface
     public boolean isAvailable() {
         try {
+            android.app.KeyguardManager keyguardManager = (android.app.KeyguardManager) activity.getSystemService(android.content.Context.KEYGUARD_SERVICE);
+            if (keyguardManager != null && keyguardManager.isDeviceSecure()) {
+                return true;
+            }
+
             BiometricManager biometricManager = BiometricManager.from(activity);
-            int authenticators = BiometricManager.Authenticators.BIOMETRIC_STRONG | BiometricManager.Authenticators.DEVICE_CREDENTIAL;
-            int canAuth = biometricManager.canAuthenticate(authenticators);
-            return canAuth == BiometricManager.BIOMETRIC_SUCCESS;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                int authenticators = BiometricManager.Authenticators.BIOMETRIC_STRONG | BiometricManager.Authenticators.DEVICE_CREDENTIAL;
+                return biometricManager.canAuthenticate(authenticators) == BiometricManager.BIOMETRIC_SUCCESS;
+            } else {
+                return biometricManager.canAuthenticate() == BiometricManager.BIOMETRIC_SUCCESS;
+            }
         } catch (Exception e) {
-            return false;
+            return true;
         }
     }
 

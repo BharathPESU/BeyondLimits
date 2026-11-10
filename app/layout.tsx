@@ -4,6 +4,7 @@ import { Plus_Jakarta_Sans, JetBrains_Mono } from 'next/font/google';
 import Script from 'next/script';
 import ServiceWorkerRegister from '@/components/ServiceWorkerRegister';
 import BiometricAppLock from '@/components/BiometricAppLock';
+import { ThemeProvider } from '@/components/ThemeProvider';
 import './globals.css';
 
 const plusJakarta = Plus_Jakarta_Sans({
@@ -82,11 +83,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="manifest" href="/manifest.webmanifest" />
         <link rel="manifest" href="/manifest.json" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+        <Script id="theme-init" strategy="beforeInteractive">
+          {`try { var t = localStorage.getItem('beyondlimits_app_theme') || 'theme_2'; document.documentElement.setAttribute('data-theme', t); } catch (e) {}`}
+        </Script>
         <Script src="https://js.puter.com/v2/" strategy="beforeInteractive" />
       </head>
       <body
         suppressHydrationWarning
-        className="min-h-screen bg-slate-50 text-slate-900 antialiased font-sans selection:bg-teal-600 selection:text-white"
+        className="min-h-screen antialiased font-sans selection:bg-teal-600 selection:text-white"
       >
         <ClerkProvider
           appearance={{
@@ -95,10 +99,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             },
           }}
         >
-          <ServiceWorkerRegister />
-          <BiometricAppLock>
-            {children}
-          </BiometricAppLock>
+          <ThemeProvider>
+            <ServiceWorkerRegister />
+            <BiometricAppLock>
+              {children}
+            </BiometricAppLock>
+          </ThemeProvider>
         </ClerkProvider>
       </body>
     </html>

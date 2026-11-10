@@ -21,7 +21,9 @@ import {
   Plus,
   RefreshCw,
   KeyRound,
+  Palette,
 } from 'lucide-react';
+import { useAppTheme } from '@/components/ThemeProvider';
 import {
   isBiometricSupported,
   isBiometricLockEnabled,
@@ -55,6 +57,7 @@ export default function UserSettingsModal({
   onClose,
 }: UserSettingsModalProps) {
   const { user, isLoaded } = useUser();
+  const { themeId, setTheme, themes } = useAppTheme();
 
   // Multi-Key Gemini API State
   const [keysList, setKeysList] = useState<string[]>([]);
@@ -588,7 +591,96 @@ export default function UserSettingsModal({
         </div>
 
         {/* =========================================================================
-            SECTION 2: JARVIS VOICE CONFIGURATION & REAL-TIME DEMO
+            SECTION 2: UI/UX VISUAL THEMES (THEME 1, THEME 2, THEME 3)
+            ========================================================================= */}
+        <div className="space-y-3.5 pt-4 border-t border-slate-100">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Palette className="w-4 h-4 text-teal-700" />
+              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800">
+                Visual Themes ({themes.length})
+              </h4>
+            </div>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-50 text-teal-800 border border-teal-200">
+              Default: Theme 2
+            </span>
+          </div>
+
+          <p className="text-xs text-slate-600 leading-relaxed">
+            Choose your preferred color theme combination. Colors and card glows update dynamically across your screen.
+          </p>
+
+          <div className="space-y-3">
+            {themes.map((t) => {
+              const isSelected = themeId === t.id;
+              return (
+                <div
+                  key={t.id}
+                  onClick={() => setTheme(t.id)}
+                  className={`p-3.5 rounded-2xl border transition-all cursor-pointer ${
+                    isSelected
+                      ? 'bg-slate-900 text-white border-teal-400 ring-2 ring-teal-400/30 shadow-md'
+                      : 'bg-slate-50 hover:bg-slate-100/90 text-slate-800 border-slate-200'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-black tracking-tight">
+                        {t.name}
+                      </span>
+                      {t.id === 'theme_2' && (
+                        <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-teal-500/20 text-teal-300 border border-teal-400/40">
+                          Default
+                        </span>
+                      )}
+                    </div>
+                    <div
+                      className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors ${
+                        isSelected
+                          ? 'border-teal-400 bg-teal-400 text-slate-950'
+                          : 'border-slate-400 bg-transparent'
+                      }`}
+                    >
+                      {isSelected && <div className="w-2 h-2 rounded-full bg-slate-950" />}
+                    </div>
+                  </div>
+
+                  <p className={`text-[11px] mb-3 ${isSelected ? 'text-slate-300' : 'text-slate-500'}`}>
+                    {t.tagline}
+                  </p>
+
+                  {/* Visual Swatches with exact colors defined */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {t.swatches.map((swatch, sIdx) => (
+                      <div
+                        key={sIdx}
+                        className={`flex items-center gap-2 p-1.5 rounded-xl border ${
+                          isSelected ? 'bg-slate-950/80 border-slate-800' : 'bg-white border-slate-200'
+                        }`}
+                      >
+                        <div
+                          className="w-5 h-5 rounded-lg shrink-0 border border-white/20 shadow-xs"
+                          style={{ backgroundColor: swatch.hex }}
+                        />
+                        <div className="min-w-0">
+                          <div className={`text-[10px] font-mono font-bold leading-tight ${isSelected ? 'text-white' : 'text-slate-900'}`}>
+                            {swatch.hex}
+                          </div>
+                          <div className={`text-[9px] truncate ${isSelected ? 'text-slate-400' : 'text-slate-500'}`}>
+                            {swatch.role}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* =========================================================================
+            SECTION 3: JARVIS VOICE CONFIGURATION & REAL-TIME DEMO
             ========================================================================= */}
         <div className="space-y-4 pt-3 border-t border-slate-100">
           <div className="flex items-center justify-between">
