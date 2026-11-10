@@ -8,6 +8,7 @@ const isPublicRoute = createRouteMatcher([
   '/sign-up(.*)',
   '/manifest.webmanifest(.*)',
   '/manifest.json(.*)',
+  '/beyondlimits.apk(.*)',
   '/sw.js(.*)',
   '/favicon.ico(.*)',
   '/pwa-(.*)',
@@ -65,7 +66,7 @@ export default clerkMiddleware(async (auth, request) => {
 export const config = {
   matcher: [
     // Skip Next.js internals and all static files, unless found in search params
-    '/((?!_next|manifest\\.json|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest|mp3|wav|ogg|m4a|aac)).*)',
+    '/((?!_next|manifest\\.json|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest|mp3|wav|ogg|m4a|aac|apk)).*)',
     // Always run for API routes
     '/(api|trpc)(.*)',
   ],
