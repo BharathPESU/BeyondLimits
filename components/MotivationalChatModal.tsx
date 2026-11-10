@@ -9,6 +9,12 @@ import {
   Send,
   Volume2,
   Square,
+  Bot,
+  Database,
+  Sparkles,
+  Edit3,
+  Check,
+  Zap,
 } from 'lucide-react';
 import { MotivationalChatMessage } from '@/lib/types';
 
@@ -18,6 +24,13 @@ interface MotivationalChatModalProps {
   onSpeakText: (text: string) => Promise<void>;
   onStopVoice: () => void;
   isSpeaking: boolean;
+  messages: MotivationalChatMessage[];
+  setMessages: React.Dispatch<React.SetStateAction<MotivationalChatMessage[]>>;
+  isAgentMode: boolean;
+  onToggleAgentMode: () => void;
+  wakeUpWord: string;
+  onUpdateWakeUpWord: (newWord: string) => void;
+  userName?: string;
 }
 
 interface SpeechRecognitionAlternativeLike {
@@ -49,11 +62,18 @@ interface SpeechRecognitionLike {
   stop: () => void;
 }
 
-const QUICK_PROMPTS = [
+const COACH_PROMPTS = [
   'I feel a strong urge right now, motivate me!',
   'How do I stay focused late at night while coding?',
   'Why is self-control the ultimate superpower?',
-  'Give me a 30-second brotherhood discipline check!',
+  'Give me a 30-second discipline check!',
+];
+
+const AGENT_PROMPTS = [
+  'How was my day on yesterday? Did I slip or stay clean?',
+  'What are my exercise updates and completed achievements?',
+  'Analyze my relapse triggers and give me moral guidance',
+  'What are my missing challenges and locked badges?',
 ];
 
 export default function MotivationalChatModal({
@@ -62,17 +82,14 @@ export default function MotivationalChatModal({
   onSpeakText,
   onStopVoice,
   isSpeaking,
+  messages,
+  setMessages,
+  isAgentMode,
+  onToggleAgentMode,
+  wakeUpWord,
+  onUpdateWakeUpWord,
+  userName = 'Bharath',
 }: MotivationalChatModalProps) {
-  const [messages, setMessages] = useState<MotivationalChatMessage[]>([
-    {
-      id: 'welcome-coach',
-      role: 'assistant',
-      content:
-        'Discipline Coach ready. Ask any question by voice or text—I am here to push you toward full self-control and success.',
-      charCount: 118,
-      createdAt: 'Ready',
-    },
-  ]);
   const [inputText, setInputText] = useState<string>('');
   const [interimTranscript, setInterimTranscript] = useState<string>('');
   const [isListening, setIsListening] = useState<boolean>(false);
@@ -81,6 +98,14 @@ export default function MotivationalChatModal({
     'idle' | 'granted' | 'denied'
   >('idle');
   const [statusNotice, setStatusNotice] = useState<string>('');
+
+  // Wake word inline edit
+  const [isEditingWakeWord, setIsEditingWakeWord] = useState<boolean>(false);
+  const [tempWakeWord, setTempWakeWord] = useState<string>(wakeUpWord);
+
+  useEffect(() => {
+    setTempWakeWord(wakeUpWord);
+  }, [wakeUpWord]);
 
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const finalTranscriptRef = useRef<string>('');
@@ -92,7 +117,7 @@ export default function MotivationalChatModal({
     }
   }, [messages, interimTranscript, isSending]);
 
-  const sendMessageToCoach = useCallback(
+  const sendMessageToAgent = useCallback(
     async (rawText: string, viaVoice = false) => {
       const trimmed = rawText.trim();
       if (!trimmed || isSending) return;
@@ -107,13 +132,18 @@ export default function MotivationalChatModal({
           minute: '2-digit',
         }),
         viaVoice,
+        agentMode: isAgentMode,
       };
 
       setMessages((prev) => [...prev, userMsg]);
       setInputText('');
       setInterimTranscript('');
       setIsSending(true);
-      setStatusNotice('Generating motivational response...');
+      setStatusNotice(
+        isAgentMode
+          ? 'Agent is inspecting read-only database and reasoning...'
+          : 'Generating motivational response...'
+      );
 
       try {
         const historyPayload = messages.slice(-6).map((m) => ({
@@ -135,6 +165,8 @@ export default function MotivationalChatModal({
           body: JSON.stringify({
             message: trimmed,
             history: historyPayload,
+            agentMode: isAgentMode,
+            userName,
             userApiKey: userCustomKey,
           }),
         });
@@ -142,16 +174,23 @@ export default function MotivationalChatModal({
         const data = (await res.json()) as {
           reply?: string;
           charCount?: number;
+          agentMode?: boolean;
+          dbQueryDetails?: {
+            table?: string;
+            queryType?: string;
+            targetDate?: string;
+            summary?: string;
+          };
           error?: string;
         };
 
         const replyText = (
           data.reply ||
-          'Guard your focus, brother! Every urge conquered builds unstoppable momentum toward your goals.'
+          `Stay strong, ${userName}! Every urge conquered builds unstoppable momentum toward your goals.`
         ).slice(0, 500);
 
         const assistantMsg: MotivationalChatMessage = {
-          id: `coach-${Date.now()}`,
+          id: `agent-${Date.now()}`,
           role: 'assistant',
           content: replyText,
           charCount: replyText.length,
@@ -160,6 +199,8 @@ export default function MotivationalChatModal({
             minute: '2-digit',
           }),
           viaVoice,
+          agentMode: data.agentMode || isAgentMode,
+          dbQueryDetails: data.dbQueryDetails,
         };
 
         setMessages((prev) => [...prev, assistantMsg]);
@@ -170,10 +211,10 @@ export default function MotivationalChatModal({
         setStatusNotice('');
       } catch {
         setIsSending(false);
-        setStatusNotice('Could not reach AI coach. Please try again.');
+        setStatusNotice('Could not reach AI brain. Please try again.');
       }
     },
-    [isSending, messages, onSpeakText]
+    [isSending, messages, isAgentMode, userName, onSpeakText, setMessages]
   );
 
   const stopListening = useCallback(() => {
@@ -277,7 +318,7 @@ export default function MotivationalChatModal({
         const spokenText = finalTranscriptRef.current.trim();
         if (spokenText.length > 0) {
           finalTranscriptRef.current = '';
-          void sendMessageToCoach(spokenText, true);
+          void sendMessageToAgent(spokenText, true);
         } else {
           setStatusNotice('');
         }
@@ -291,6 +332,14 @@ export default function MotivationalChatModal({
     }
   };
 
+  const handleSaveWakeWordInline = () => {
+    const trimmed = tempWakeWord.trim();
+    if (trimmed) {
+      onUpdateWakeUpWord(trimmed);
+      setIsEditingWakeWord(false);
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -300,33 +349,104 @@ export default function MotivationalChatModal({
       aria-modal="true"
       aria-labelledby="chat-modal-title"
     >
-      {/* Full-Screen Light Header (Matches Calendar & Attendance) */}
-      <div className="bg-white border-b border-slate-200 px-4 sm:px-6 py-4 shrink-0">
-        <div className="max-w-4xl w-full mx-auto flex items-center justify-between">
+      {/* Light Header with Agent Mode Toggle & Wake Word Pill */}
+      <div className="bg-white border-b border-slate-200 px-4 sm:px-6 py-3.5 shrink-0">
+        <div className="max-w-4xl w-full mx-auto flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-teal-50 text-teal-700">
-              <MessageSquare className="w-5 h-5" />
-            </div>
-            <h2
-              id="chat-modal-title"
-              className="text-base sm:text-lg font-bold text-slate-900"
+            <div
+              className={`p-2 rounded-xl transition-colors ${
+                isAgentMode ? 'bg-emerald-50 text-emerald-700' : 'bg-teal-50 text-teal-700'
+              }`}
             >
-              AI Discipline &amp; Motivation Coach
-            </h2>
+              {isAgentMode ? <Bot className="w-5 h-5" /> : <MessageSquare className="w-5 h-5" />}
+            </div>
+            <div>
+              <h2
+                id="chat-modal-title"
+                className="text-sm sm:text-base font-bold text-slate-900 flex items-center gap-2"
+              >
+                <span>{isAgentMode ? 'Autonomous Discipline Agent' : 'Discipline & Motivation Coach'}</span>
+                {isAgentMode && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                    DB Connected
+                  </span>
+                )}
+              </h2>
+              <p className="text-[11px] text-slate-500">
+                {isAgentMode
+                  ? 'Accesses your personal database (attendance, streaks, workouts, achievements) with read-only safety'
+                  : 'Daily mindset, brotherly tough love, and emotional accountability'}
+              </p>
+            </div>
           </div>
 
-          <button
-            type="button"
-            onClick={() => {
-              stopListening();
-              onStopVoice();
-              onClose();
-            }}
-            aria-label="Close AI Coach Chat"
-            className="min-h-[42px] min-w-[42px] inline-flex items-center justify-center rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Agent Mode Toggle Switch */}
+            <button
+              type="button"
+              onClick={onToggleAgentMode}
+              className={`min-h-[38px] px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                isAgentMode
+                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm ring-2 ring-emerald-400/40'
+                  : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
+              }`}
+              title="Toggle Agent Mode: Enables database query execution and personalized system prompt evolution"
+            >
+              <Bot className="w-3.5 h-3.5" />
+              <span>Agent: {isAgentMode ? 'ON' : 'OFF'}</span>
+            </button>
+
+            {/* Wake Word Pill */}
+            {isAgentMode && (
+              <div className="hidden sm:flex items-center gap-1 px-2.5 py-1 bg-slate-100 border border-slate-200 rounded-xl text-xs">
+                {isEditingWakeWord ? (
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="text"
+                      value={tempWakeWord}
+                      onChange={(e) => setTempWakeWord(e.target.value)}
+                      className="w-20 px-1 py-0.5 text-xs bg-white border border-teal-500 rounded outline-none font-bold text-teal-800"
+                      autoFocus
+                    />
+                    <button
+                      type="button"
+                      onClick={handleSaveWakeWordInline}
+                      className="p-1 text-emerald-700 hover:text-emerald-800 cursor-pointer"
+                      title="Save Wake Word"
+                    >
+                      <Check className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1 text-slate-600">
+                    <span>Wake:</span>
+                    <strong className="text-emerald-700 font-mono font-bold">&quot;{wakeUpWord}&quot;</strong>
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingWakeWord(true)}
+                      className="p-0.5 text-slate-400 hover:text-slate-700 cursor-pointer"
+                      title="Edit Wake Word"
+                    >
+                      <Edit3 className="w-3 h-3" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={() => {
+                stopListening();
+                onStopVoice();
+                onClose();
+              }}
+              aria-label="Close Chat"
+              className="min-h-[38px] min-w-[38px] inline-flex items-center justify-center rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -335,13 +455,17 @@ export default function MotivationalChatModal({
         <div className="max-w-4xl w-full mx-auto space-y-4">
           {/* Quick Starter Chips */}
           <div className="flex flex-wrap gap-2 pb-1">
-            {QUICK_PROMPTS.map((q) => (
+            {(isAgentMode ? AGENT_PROMPTS : COACH_PROMPTS).map((q) => (
               <button
                 key={q}
                 type="button"
                 disabled={isSending}
-                onClick={() => void sendMessageToCoach(q, false)}
-                className="px-3.5 py-2 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-xs font-medium text-slate-700 transition-colors cursor-pointer"
+                onClick={() => void sendMessageToAgent(q, false)}
+                className={`px-3 py-1.5 rounded-xl border text-xs font-medium transition-colors cursor-pointer text-left ${
+                  isAgentMode
+                    ? 'bg-emerald-50/60 hover:bg-emerald-100/70 border-emerald-200 text-emerald-900'
+                    : 'bg-white hover:bg-slate-100 border-slate-200 text-slate-700'
+                }`}
               >
                 {q}
               </button>
@@ -359,13 +483,29 @@ export default function MotivationalChatModal({
                 className={`max-w-[88%] sm:max-w-[78%] rounded-2xl p-4 text-xs sm:text-sm leading-relaxed ${
                   msg.role === 'user'
                     ? 'bg-teal-700 text-white rounded-br-xs'
-                    : 'bg-white border border-slate-200 text-slate-900 rounded-bl-xs'
+                    : 'bg-white border border-slate-200 text-slate-900 rounded-bl-xs shadow-xs'
                 }`}
               >
                 <p>{msg.content}</p>
 
+                {/* Database Query Execution Badge */}
+                {msg.dbQueryDetails && (
+                  <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-start gap-1.5 text-[11px] text-emerald-700 bg-emerald-50/70 p-2 rounded-xl">
+                    <Database className="w-3.5 h-3.5 mt-0.5 shrink-0 text-emerald-600" />
+                    <div>
+                      <span className="font-bold">
+                        Database Query Executed ({msg.dbQueryDetails.table || 'User DB'}):
+                      </span>{' '}
+                      <span className="text-slate-600">{msg.dbQueryDetails.summary}</span>
+                    </div>
+                  </div>
+                )}
+
                 {msg.role === 'assistant' && (
-                  <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-end">
+                  <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between">
+                    <span className="text-[10px] text-slate-400">
+                      {msg.agentMode ? 'Autonomous Agent' : 'Discipline Coach'}
+                    </span>
                     <button
                       type="button"
                       onClick={() => void onSpeakText(msg.content)}
@@ -391,8 +531,15 @@ export default function MotivationalChatModal({
 
           {isSending && (
             <div className="flex justify-start">
-              <div className="rounded-2xl px-4 py-3 bg-white border border-slate-200 text-xs font-medium text-teal-700 animate-pulse">
-                Coach is generating your motivational answer...
+              <div className="rounded-2xl px-4 py-3 bg-white border border-slate-200 text-xs font-medium text-teal-700 animate-pulse flex items-center gap-2">
+                {isAgentMode ? (
+                  <>
+                    <Database className="w-3.5 h-3.5 text-emerald-600 animate-spin" />
+                    <span>Querying your database &amp; compiling agent answer...</span>
+                  </>
+                ) : (
+                  <span>Coach is generating your motivational answer...</span>
+                )}
               </div>
             </div>
           )}
@@ -406,7 +553,7 @@ export default function MotivationalChatModal({
             <span className="text-slate-600 truncate">
               {statusNotice ||
                 (isSpeaking
-                  ? 'Speaking motivational reply aloud...'
+                  ? 'Speaking response aloud...'
                   : 'Microphone permission active · Tap "Speak to AI" anytime')}
             </span>
             {isSpeaking && (
@@ -434,6 +581,8 @@ export default function MotivationalChatModal({
             className={`w-full min-h-[46px] rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-colors cursor-pointer ${
               isListening
                 ? 'bg-rose-600 hover:bg-rose-700 text-white animate-pulse'
+                : isAgentMode
+                ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm'
                 : 'bg-teal-700 hover:bg-teal-800 text-white'
             }`}
           >
@@ -445,7 +594,11 @@ export default function MotivationalChatModal({
             ) : (
               <>
                 <Mic className="w-4 h-4" />
-                <span>Speak to AI (Auto-Send)</span>
+                <span>
+                  {isAgentMode
+                    ? `Speak to Autonomous Agent (${wakeUpWord})`
+                    : 'Speak to AI Coach (Auto-Send)'}
+                </span>
               </>
             )}
           </button>
@@ -454,7 +607,7 @@ export default function MotivationalChatModal({
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              void sendMessageToCoach(inputText, false);
+              void sendMessageToAgent(inputText, false);
             }}
             className="flex items-center gap-2"
           >
@@ -462,7 +615,11 @@ export default function MotivationalChatModal({
               type="text"
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
-              placeholder="Or type any question for your motivational AI coach..."
+              placeholder={
+                isAgentMode
+                  ? 'Ask about your day (e.g. "How was my day on Nov 5?"), workouts, triggers...'
+                  : 'Or type any question for your motivational AI coach...'
+              }
               className="flex-1 min-h-[44px] px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-teal-600"
             />
             <button

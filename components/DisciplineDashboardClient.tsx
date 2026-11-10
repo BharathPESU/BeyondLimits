@@ -33,6 +33,8 @@ import {
   AlertTriangle,
   Award,
   TrendingUp,
+  Bot,
+  Mic,
 } from 'lucide-react';
 import { SignInButton, SignUpButton, Show, UserButton, useUser } from '@clerk/nextjs';
 import {
@@ -40,6 +42,7 @@ import {
   DailyTechNewsRecord,
   DashboardPayload,
   FriendId,
+  MotivationalChatMessage,
 } from '@/lib/types';
 import AttendanceModal from './AttendanceModal';
 import AttendanceCalendarModal from './AttendanceCalendarModal';
@@ -92,6 +95,92 @@ export default function DisciplineDashboardClient({
   }, []);
 
   const displayName = profileName || user?.fullName || user?.firstName || 'Warrior';
+
+  // Autonomous Agent & Wake Word state
+  const [isAgentMode, setIsAgentMode] = useState<boolean>(false);
+  const [wakeUpWord, setWakeUpWord] = useState<string>('Jarvis');
+  const [agentVoiceStatus, setAgentVoiceStatus] = useState<string>('');
+  const [agentTranscript, setAgentTranscript] = useState<string>('');
+
+  const [chatMessages, setChatMessages] = useState<MotivationalChatMessage[]>([
+    {
+      id: 'welcome-agent',
+      role: 'assistant',
+      content:
+        'Discipline Agent ready. Ask about your day, workouts, or triggers by voice or text—I have direct read-only access to your records.',
+      charCount: 135,
+      createdAt: 'Ready',
+      agentMode: true,
+    },
+  ]);
+
+  const continuousRecognitionRef = useRef<any>(null);
+  const isAgentModeRef = useRef<boolean>(false);
+  const wakeUpWordRef = useRef<string>('Jarvis');
+  const isProcessingWakeWordRef = useRef<boolean>(false);
+  const displayNameRef = useRef<string>(displayName);
+
+  useEffect(() => {
+    displayNameRef.current = displayName;
+  }, [displayName]);
+
+  useEffect(() => {
+    isAgentModeRef.current = isAgentMode;
+  }, [isAgentMode]);
+
+  useEffect(() => {
+    wakeUpWordRef.current = wakeUpWord;
+  }, [wakeUpWord]);
+
+  // Synchronize Agent Mode & Wake Word with localStorage
+  useEffect(() => {
+    try {
+      const savedMode = localStorage.getItem('beyondlimits_agent_mode');
+      if (savedMode === 'true') {
+        setIsAgentMode(true);
+      }
+      const savedWord = localStorage.getItem('beyondlimits_wakeup_word');
+      if (savedWord) {
+        setWakeUpWord(savedWord);
+      }
+    } catch {}
+
+    const handleConfigChanged = () => {
+      try {
+        const savedMode = localStorage.getItem('beyondlimits_agent_mode');
+        setIsAgentMode(savedMode === 'true');
+        const savedWord = localStorage.getItem('beyondlimits_wakeup_word');
+        if (savedWord) {
+          setWakeUpWord(savedWord);
+        }
+      } catch {}
+    };
+
+    window.addEventListener('beyondlimits_agent_config_changed', handleConfigChanged);
+    return () =>
+      window.removeEventListener('beyondlimits_agent_config_changed', handleConfigChanged);
+  }, []);
+
+  const handleToggleAgentMode = useCallback(() => {
+    setIsAgentMode((prev) => {
+      const nextVal = !prev;
+      try {
+        localStorage.setItem('beyondlimits_agent_mode', String(nextVal));
+        window.dispatchEvent(new Event('beyondlimits_agent_config_changed'));
+      } catch {}
+      return nextVal;
+    });
+  }, []);
+
+  const handleUpdateWakeUpWord = useCallback((newWord: string) => {
+    const trimmed = newWord.trim();
+    if (!trimmed) return;
+    setWakeUpWord(trimmed);
+    try {
+      localStorage.setItem('beyondlimits_wakeup_word', trimmed);
+      window.dispatchEvent(new Event('beyondlimits_agent_config_changed'));
+    } catch {}
+  }, []);
 
   const [dashboard, setDashboard] = useState<DashboardPayload>(initialData);
   const [graphMode, setGraphMode] = useState<'weekly' | 'monthly'>('weekly');
@@ -530,6 +619,234 @@ export default function DisciplineDashboardClient({
     [startAudioTelemetryLoop, stopAudioTelemetryLoop, stopVoice]
   );
 
+  // Continuous Speech Recognition Listener for Autonomous Agent Wake Word
+  useEffect(() => {
+    if (!isAgentMode) {
+      if (continuousRecognitionRef.current) {
+        try {
+          continuousRecognitionRef.current.stop();
+        } catch {}
+        continuousRecognitionRef.current = null;
+      }
+      setAgentVoiceStatus('');
+      setAgentTranscript('');
+      return;
+    }
+
+    if (isSpeaking) {
+      // Don't listen while voice is speaking to prevent feedback loops
+      if (continuousRecognitionRef.current) {
+        try {
+          continuousRecognitionRef.current.stop();
+        } catch {}
+        continuousRecognitionRef.current = null;
+      }
+      return;
+    }
+
+    const win =
+      typeof window !== 'undefined'
+        ? (window as unknown as {
+            SpeechRecognition?: any;
+            webkitSpeechRecognition?: any;
+          })
+        : {};
+    const SpeechRecognitionCtor =
+      win.SpeechRecognition || win.webkitSpeechRecognition;
+
+    if (!SpeechRecognitionCtor) {
+      setAgentVoiceStatus('Speech recognition unavailable in this browser.');
+      return;
+    }
+
+    let recognition: any = null;
+    let isActive = true;
+
+    const startContinuous = () => {
+      if (!isActive || !isAgentModeRef.current || isSpeaking) return;
+
+      try {
+        recognition = new SpeechRecognitionCtor();
+        recognition.lang = 'en-US';
+        recognition.continuous = true;
+        recognition.interimResults = true;
+
+        recognition.onstart = () => {
+          setAgentVoiceStatus(`Listening for "${wakeUpWordRef.current}"...`);
+        };
+
+        recognition.onresult = async (event: any) => {
+          let transcript = '';
+          for (let i = event.resultIndex; i < event.results.length; i++) {
+            transcript += event.results[i][0]?.transcript || '';
+          }
+          const cleaned = transcript.trim();
+          if (!cleaned) return;
+
+          setAgentTranscript(cleaned);
+
+          const lowerTranscript = cleaned.toLowerCase();
+          const targetWakeWord = wakeUpWordRef.current.toLowerCase();
+
+          if (
+            lowerTranscript.includes(targetWakeWord) &&
+            !isProcessingWakeWordRef.current
+          ) {
+            isProcessingWakeWordRef.current = true;
+
+            try {
+              recognition.stop();
+            } catch {}
+
+            const wakeIndex = lowerTranscript.indexOf(targetWakeWord);
+            const afterWake = cleaned
+              .slice(wakeIndex + targetWakeWord.length)
+              .replace(/^[,.!?\s]+/, '')
+              .trim();
+
+            const currentName = displayNameRef.current || 'Bharath';
+
+            if (
+              afterWake.length === 0 ||
+              /^(hey|hello|hi|are you there|listen|wake up)[?!.]*$/i.test(afterWake)
+            ) {
+              // Just the wake word
+              const greeting = `Hey ${currentName}, how are you doing? I am listening.`;
+              setChatMessages((prev) => [
+                ...prev,
+                {
+                  id: `wake-${Date.now()}`,
+                  role: 'assistant',
+                  content: greeting,
+                  charCount: greeting.length,
+                  createdAt: new Date().toLocaleTimeString([], {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  }),
+                  agentMode: true,
+                },
+              ]);
+
+              setAgentVoiceStatus(`Responded to "${wakeUpWordRef.current}"`);
+              await speakCustomText(greeting);
+            } else {
+              // Wake word with a query/question
+              setChatMessages((prev) => [
+                ...prev,
+                {
+                  id: `user-${Date.now()}`,
+                  role: 'user',
+                  content: afterWake,
+                  charCount: afterWake.length,
+                  createdAt: new Date().toLocaleTimeString([], {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  }),
+                  viaVoice: true,
+                  agentMode: true,
+                },
+              ]);
+
+              setAgentVoiceStatus(`Querying database for "${afterWake}"...`);
+
+              try {
+                const userCustomKey =
+                  typeof window !== 'undefined'
+                    ? localStorage.getItem('beyondlimits_gemini_api_key') || ''
+                    : '';
+                const res = await fetch('/api/chat', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    ...(userCustomKey ? { 'x-gemini-api-key': userCustomKey } : {}),
+                  },
+                  body: JSON.stringify({
+                    message: afterWake,
+                    agentMode: true,
+                    userName: currentName,
+                    userApiKey: userCustomKey,
+                  }),
+                });
+
+                const data = await res.json();
+                const replyText =
+                  data.reply ||
+                  `Stay disciplined, ${currentName}! Conquering urges is your sacred duty.`;
+
+                setChatMessages((prev) => [
+                  ...prev,
+                  {
+                    id: `agent-${Date.now()}`,
+                    role: 'assistant',
+                    content: replyText,
+                    charCount: replyText.length,
+                    createdAt: new Date().toLocaleTimeString([], {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    }),
+                    viaVoice: true,
+                    agentMode: true,
+                    dbQueryDetails: data.dbQueryDetails,
+                  },
+                ]);
+
+                setAgentVoiceStatus('Speaking agent reply aloud...');
+                await speakCustomText(replyText);
+              } catch {
+                const errMsg = `I could not query your database right now, ${currentName}. Stay strong!`;
+                await speakCustomText(errMsg);
+              }
+            }
+
+            isProcessingWakeWordRef.current = false;
+            setAgentTranscript('');
+            setAgentVoiceStatus(`Listening for "${wakeUpWordRef.current}"...`);
+
+            if (isAgentModeRef.current) {
+              setTimeout(() => {
+                startContinuous();
+              }, 700);
+            }
+          }
+        };
+
+        recognition.onerror = () => {
+          // Keep listening
+        };
+
+        recognition.onend = () => {
+          if (
+            isActive &&
+            isAgentModeRef.current &&
+            !isProcessingWakeWordRef.current &&
+            !isSpeaking
+          ) {
+            setTimeout(() => {
+              startContinuous();
+            }, 500);
+          }
+        };
+
+        continuousRecognitionRef.current = recognition;
+        recognition.start();
+      } catch {
+        // Recognition start failed
+      }
+    };
+
+    startContinuous();
+
+    return () => {
+      isActive = false;
+      if (continuousRecognitionRef.current) {
+        try {
+          continuousRecognitionRef.current.stop();
+        } catch {}
+        continuousRecognitionRef.current = null;
+      }
+    };
+  }, [isAgentMode, isSpeaking, speakCustomText]);
+
   const handleJarvisClick = useCallback(() => {
     // Current quote index from the 2-6 sequence (1 to 5)
     const currentIdx = jarvisQuoteIndexRef.current;
@@ -759,8 +1076,51 @@ export default function DisciplineDashboardClient({
                   }`}
                 />
               </button>
+
+              {/* Agent Mode Toggle Button */}
+              <button
+                type="button"
+                onClick={handleToggleAgentMode}
+                className={`min-h-[40px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl transition-all cursor-pointer ${
+                  isAgentMode
+                    ? 'bg-emerald-500 text-slate-950 hover:bg-emerald-400 ring-2 ring-emerald-400/50 shadow-lg shadow-emerald-500/20'
+                    : 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700'
+                }`}
+                title={`Toggle Autonomous Agent Mode (Wake Word: "${wakeUpWord}")`}
+              >
+                <Bot className="w-4 h-4" />
+                <span>Agent: {isAgentMode ? 'ON' : 'OFF'}</span>
+                {isAgentMode && (
+                  <span className="w-2 h-2 rounded-full bg-slate-950 animate-ping ml-0.5" />
+                )}
+              </button>
             </div>
           </div>
+
+          {/* Agent Continuous Microphone & Wake Word Live Status Strip */}
+          {isAgentMode && (
+            <div className="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2.5 bg-emerald-950/50 border border-emerald-500/30 rounded-xl text-xs text-emerald-300">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+                <span>
+                  Continuous Mic Active · Say{' '}
+                  <strong className="text-white bg-emerald-900/80 px-1.5 py-0.5 rounded border border-emerald-400/30">
+                    &quot;{wakeUpWord}&quot;
+                  </strong>{' '}
+                  to wake JARVIS
+                  {agentTranscript && (
+                    <span className="ml-1 text-emerald-200 font-mono italic">
+                      (&ldquo;{agentTranscript}&rdquo;)
+                    </span>
+                  )}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 text-[11px] text-emerald-400/90 font-medium">
+                <Mic className="w-3.5 h-3.5 animate-pulse text-emerald-400" />
+                <span>{agentVoiceStatus || '3D Reactor Online'}</span>
+              </div>
+            </div>
+          )}
         </section>
 
         {/* 2. MONTHLY SELF-CONTROL & HABIT PROGRESS */}
@@ -1173,6 +1533,13 @@ export default function DisciplineDashboardClient({
         onSpeakText={(text) => speakCustomText(text, false)}
         onStopVoice={stopVoice}
         isSpeaking={isSpeaking}
+        messages={chatMessages}
+        setMessages={setChatMessages}
+        isAgentMode={isAgentMode}
+        onToggleAgentMode={handleToggleAgentMode}
+        wakeUpWord={wakeUpWord}
+        onUpdateWakeUpWord={handleUpdateWakeUpWord}
+        userName={displayName}
       />
 
       {/* 12-Exercise Workout Modal */}

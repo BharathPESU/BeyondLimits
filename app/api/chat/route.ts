@@ -2,14 +2,19 @@ import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
 import { z } from 'zod';
 import { getDashboardPayload } from '@/lib/db';
+import {
+  DATABASE_SCHEMA_DESCRIPTION,
+  queryUserAttendanceByDate,
+  queryUserAttendanceRange,
+  queryUserRelapseInsights,
+  queryUserWorkoutUpdates,
+  queryUserAchievements,
+  queryUserProfileDetails,
+  executeSafeReadOnlyQuery,
+} from '@/lib/agent-database-service';
+import { getEvolvedAgentSystemPrompt } from '@/lib/agent-prompt-evolution';
 
 export const dynamic = 'force-dynamic';
-
-const MOTIVATIONAL_COACH_SYSTEM_PROMPT = `You are the Iron-Will Discipline Coach & Personal Self-Mastery Mentor.
-Core Directive:
-1. Every single time the user asks ANY question, shares a thought, or talks to you, answer their question directly AND forcefully connect it back to self-discipline, emotional control, zero masturbation/relapses, and relentless ambition.
-2. Speak in a strong, commanding, stoic brotherly voice suitable for direct text-to-speech playback.
-3. STRICT CHARACTER LIMIT: Your entire response MUST be under 500 characters (including spaces and punctuation). Never exceed 480 characters. No markdown bullet lists or hashtags—write punchy, spoken-word sentences.`;
 
 const ChatRequestSchema = z.object({
   message: z.string().min(1, 'Please enter or speak a message.').max(1000),
@@ -22,31 +27,90 @@ const ChatRequestSchema = z.object({
     )
     .optional()
     .default([]),
+  agentMode: z.boolean().optional().default(false),
+  userName: z.string().optional(),
 });
 
-function enforceMax500Chars(text: string): string {
+function enforceMax480Chars(text: string): string {
   const cleaned = text
     .replace(/[*#_`~]+/g, '')
     .replace(/\s+/g, ' ')
     .trim();
 
-  if (cleaned.length <= 495) {
+  if (cleaned.length <= 475) {
     return cleaned;
   }
 
-  const sliced = cleaned.slice(0, 490);
+  const sliced = cleaned.slice(0, 470);
   const lastPeriod = Math.max(
     sliced.lastIndexOf('.'),
     sliced.lastIndexOf('!'),
     sliced.lastIndexOf('?')
   );
 
-  if (lastPeriod > 220) {
+  if (lastPeriod > 200) {
     return sliced.slice(0, lastPeriod + 1).trim();
   }
 
   const lastSpace = sliced.lastIndexOf(' ');
-  return `${sliced.slice(0, lastSpace > 200 ? lastSpace : 485).trim()}...`;
+  return `${sliced.slice(0, lastSpace > 200 ? lastSpace : 465).trim()}...`;
+}
+
+/**
+ * Intelligent helper to extract date references from natural language
+ */
+function detectDateInQuery(message: string): string | null {
+  const lower = message.toLowerCase();
+
+  if (lower.includes('today')) {
+    return 'today';
+  }
+  if (lower.includes('yesterday')) {
+    return 'yesterday';
+  }
+
+  // Matches YYYY-MM-DD
+  const isoMatch = lower.match(/\b(\d{4}-\d{1,2}-\d{1,2})\b/);
+  if (isoMatch) return isoMatch[1];
+
+  // Matches e.g. "nov 5", "november 5", "5 nov", "nov 5th"
+  const months = [
+    'january|jan',
+    'february|feb',
+    'march|mar',
+    'april|apr',
+    'may',
+    'june|jun',
+    'july|jul',
+    'august|aug',
+    'september|sep|sept',
+    'october|oct',
+    'november|nov',
+    'december|dec',
+  ];
+
+  for (let mIdx = 0; mIdx < months.length; mIdx++) {
+    const mPattern = months[mIdx];
+    const regex1 = new RegExp(`(?:${mPattern})\\s+(\\d{1,2})(?:st|nd|rd|th)?`, 'i');
+    const match1 = lower.match(regex1);
+    if (match1) {
+      const day = match1[1].padStart(2, '0');
+      const month = String(mIdx + 1).padStart(2, '0');
+      const year = new Date().getFullYear();
+      return `${year}-${month}-${day}`;
+    }
+
+    const regex2 = new RegExp(`(\\d{1,2})(?:st|nd|rd|th)?\\s+(?:of\\s+)?(?:${mPattern})`, 'i');
+    const match2 = lower.match(regex2);
+    if (match2) {
+      const day = match2[1].padStart(2, '0');
+      const month = String(mIdx + 1).padStart(2, '0');
+      const year = new Date().getFullYear();
+      return `${year}-${month}-${day}`;
+    }
+  }
+
+  return null;
 }
 
 export async function POST(request: NextRequest) {
@@ -61,7 +125,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { message, history } = parsed.data;
+    const { message, history, agentMode, userName: customUserName } = parsed.data;
     const userApiKey =
       request.headers.get('x-gemini-api-key')?.trim() ||
       (typeof body === 'object' && body !== null && 'userApiKey' in body
@@ -70,28 +134,134 @@ export async function POST(request: NextRequest) {
     const serverApiKey = process.env.GEMINI_API_KEY?.trim();
 
     const dashboard = getDashboardPayload();
+    const athleteName = customUserName || dashboard.userStats.userName || 'Bharath';
     const uStats = dashboard.userStats;
 
+    // Build recent conversation transcript
     const recentHistoryText = history
       .slice(-4)
-      .map((h) => `${h.role === 'user' ? 'User' : 'Coach'}: ${h.content}`)
+      .map((h) => `${h.role === 'user' ? 'Athlete' : 'Agent'}: ${h.content}`)
       .join('\n');
 
-    const prompt = `Live Accountability Context:
-- Current Clean Streak: ${uStats.currentStreak} clean days (${uStats.weeklyCleanDays} clean this week)
-- Monthly Self-Control Rate: ${uStats.monthlyDisciplineRate}% (${uStats.monthlyCleanDays} clean days, ${uStats.monthlyRelapseDays} relapses this month)
-- Longest Streak: ${uStats.longestStreak} clean days
+    let dbQueryDetails: {
+      queryType?: string;
+      targetDate?: string;
+      table?: string;
+      summary?: string;
+    } | undefined = undefined;
 
-${recentHistoryText ? `Recent Conversation:\n${recentHistoryText}\n\n` : ''}User's New Question / Statement: "${message}"
+    let databaseContext = '';
+    let systemInstruction = '';
 
-Respond directly to the user's question while motivating them fiercely to stay disciplined, focused, and relentless. Remember: strictly under 480 characters total, plain spoken text only.`;
+    if (agentMode) {
+      // 1. Synthesize Evolving System Prompt with Moral & Behavioral Directives
+      const evolvedProfile = getEvolvedAgentSystemPrompt(athleteName);
+      systemInstruction = evolvedProfile.systemInstruction;
+
+      // 2. Intelligent Pre-Query based on User Question
+      const lowerMsg = message.toLowerCase();
+      const detectedDate = detectDateInQuery(message);
+
+      if (detectedDate || lowerMsg.includes('day') || lowerMsg.includes('relapse') || lowerMsg.includes('masturbat')) {
+        const queryDate = detectedDate || 'today';
+        const attendanceRes = await queryUserAttendanceByDate(queryDate);
+        databaseContext += `\n[VERIFIED READ-ONLY DATABASE QUERY: attendance_logs for ${attendanceRes.date}]\n${attendanceRes.summary}\n`;
+        dbQueryDetails = {
+          queryType: 'get_attendance_by_date',
+          targetDate: attendanceRes.date,
+          table: 'attendance_logs',
+          summary: attendanceRes.summary,
+        };
+      }
+
+      if (
+        lowerMsg.includes('workout') ||
+        lowerMsg.includes('exercise') ||
+        lowerMsg.includes('routine') ||
+        lowerMsg.includes('pushup') ||
+        lowerMsg.includes('squat')
+      ) {
+        const workoutRes = await queryUserWorkoutUpdates();
+        databaseContext += `\n[VERIFIED READ-ONLY DATABASE QUERY: workout_sessions]\n${workoutRes.summary}\n`;
+        if (!dbQueryDetails) {
+          dbQueryDetails = {
+            queryType: 'get_workout_and_exercise_updates',
+            table: 'workout_sessions',
+            summary: workoutRes.summary,
+          };
+        }
+      }
+
+      if (
+        lowerMsg.includes('achievement') ||
+        lowerMsg.includes('challenge') ||
+        lowerMsg.includes('badge') ||
+        lowerMsg.includes('missing') ||
+        lowerMsg.includes('streak')
+      ) {
+        const achieveRes = await queryUserAchievements();
+        databaseContext += `\n[VERIFIED READ-ONLY DATABASE QUERY: challenges_catalog & badges_catalog]\n${achieveRes.summary}\n`;
+        if (!dbQueryDetails) {
+          dbQueryDetails = {
+            queryType: 'get_achievements_and_challenges',
+            table: 'user_challenges',
+            summary: achieveRes.summary,
+          };
+        }
+      }
+
+      if (
+        lowerMsg.includes('why') ||
+        lowerMsg.includes('trigger') ||
+        lowerMsg.includes('trap') ||
+        lowerMsg.includes('lazy') ||
+        lowerMsg.includes('stress') ||
+        lowerMsg.includes('pattern')
+      ) {
+        const insightsRes = await queryUserRelapseInsights();
+        databaseContext += `\n[VERIFIED READ-ONLY DATABASE QUERY: relapse_patterns & triggers]\n${insightsRes.summary}\n`;
+        if (!dbQueryDetails) {
+          dbQueryDetails = {
+            queryType: 'get_relapse_insights',
+            table: 'attendance_logs (aggregated)',
+            summary: insightsRes.summary,
+          };
+        }
+      }
+
+      if (!databaseContext) {
+        // Fallback default snapshot for general queries
+        databaseContext = `\n[VERIFIED DATABASE SNAPSHOT]\n- Current Clean Streak: ${uStats.currentStreak} days\n- Monthly Clean Rate: ${uStats.monthlyDisciplineRate}%\n- Total Days Marked: ${uStats.totalMarkedDays}\n- Primary Relapse Reason on Record: Lying lazy in room scrolling phone late.\n`;
+      }
+    } else {
+      // Standard Discipline Coach prompt
+      systemInstruction = `You are the Iron-Will Discipline Coach & Mentor for ${athleteName}.
+Core Directive:
+1. Speak in a strong, commanding, stoic brotherly voice suitable for direct text-to-speech playback.
+2. Answer the question directly AND forcefully connect it back to self-discipline, zero masturbation, and relentless ambition.
+3. STRICT CHARACTER LIMIT: Your entire response MUST be under 480 characters. Plain spoken text only.`;
+    }
+
+    const finalPrompt = `Athlete Identity: ${athleteName}
+Current Clean Streak: ${uStats.currentStreak} clean days
+Monthly Self-Control Rate: ${uStats.monthlyDisciplineRate}%
+${databaseContext ? `\nVerified Read-Only Database Fact:\n${databaseContext}` : ''}
+${recentHistoryText ? `\nRecent Conversation:\n${recentHistoryText}\n` : ''}
+Athlete's New Statement: "${message}"
+
+Directives for Response:
+1. Address the athlete by name (${athleteName}) if natural.
+2. Directly answer their question using the verified database records above.
+3. If they slipped/masturbated on the date in question, state the exact reason they logged, give strong moral grounding, and passionately build their confidence to conquer today.
+4. If they asked about workout/achievements, state their exact streak and missing challenges.
+5. STRICT CHARACTER LIMIT: Under 480 characters total. Spoken punchy sentences only.`;
 
     const generateWithKey = async (key: string): Promise<string> => {
       const ai = new GoogleGenAI({
         apiKey: key,
         httpOptions: {
           headers: {
-            'User-Agent': 'beyondlimits-chat',
+            'User-Agent': 'beyondlimits-agent',
           },
         },
       });
@@ -99,20 +269,20 @@ Respond directly to the user's question while motivating them fiercely to stay d
       try {
         const response = await ai.models.generateContent({
           model: 'gemini-2.5-flash',
-          contents: prompt,
+          contents: finalPrompt,
           config: {
-            systemInstruction: MOTIVATIONAL_COACH_SYSTEM_PROMPT,
-            temperature: 0.75,
+            systemInstruction,
+            temperature: 0.7,
           },
         });
         return response.text || '';
       } catch {
         const response = await ai.models.generateContent({
           model: 'gemini-2.0-flash',
-          contents: prompt,
+          contents: finalPrompt,
           config: {
-            systemInstruction: MOTIVATIONAL_COACH_SYSTEM_PROMPT,
-            temperature: 0.75,
+            systemInstruction,
+            temperature: 0.7,
           },
         });
         return response.text || '';
@@ -123,7 +293,7 @@ Respond directly to the user's question while motivating them fiercely to stay d
     let keyProvider: 'user-gemini-key' | 'server-gemini-key' | 'deterministic-fallback' =
       'deterministic-fallback';
 
-    // Step 1: Attempt user's custom Gemini API key if provided
+    // Step 1: User's personal Gemini API key
     if (userApiKey && userApiKey.startsWith('AIzaSy')) {
       try {
         rawReply = await generateWithKey(userApiKey);
@@ -131,14 +301,11 @@ Respond directly to the user's question while motivating them fiercely to stay d
           keyProvider = 'user-gemini-key';
         }
       } catch (err) {
-        console.warn(
-          'User Gemini API key failed, automatically falling back to Vercel hosted key:',
-          err instanceof Error ? err.message : err
-        );
+        console.warn('User Gemini API key failed, falling back to Vercel key:', err);
       }
     }
 
-    // Step 2: Fallback to server-hosted Gemini API key on Vercel
+    // Step 2: Server-hosted Gemini API key on Vercel
     if (!rawReply && serverApiKey && serverApiKey !== 'MY_GEMINI_API_KEY') {
       try {
         rawReply = await generateWithKey(serverApiKey);
@@ -150,28 +317,36 @@ Respond directly to the user's question while motivating them fiercely to stay d
       }
     }
 
-    // Step 3: Deterministic high-impact fallback if both keys are unavailable or fail
+    // Step 3: Deterministic high-impact fallback
     if (!rawReply) {
-      rawReply = enforceMax500Chars(
-        `Stay locked in, brother! Regarding "${message.slice(0, 60)}": discipline is forged when you conquer every impulse and put 100% of your energy into building your future. Master your mind today, keep your streak clean, and never settle for weakness.`
-      );
+      if (agentMode && dbQueryDetails) {
+        rawReply = enforceMax480Chars(
+          `Hey ${athleteName}, according to your database: ${dbQueryDetails.summary} Remember, every urge conquered builds unstoppable masculine power. Stand up, shake off weakness, and lead your day with honor!`
+        );
+      } else {
+        rawReply = enforceMax480Chars(
+          `Stay locked in, ${athleteName}! Regarding "${message.slice(0, 50)}": true discipline means conquering every urge and channeling your raw life-force into building your future. Master your mind today!`
+        );
+      }
       keyProvider = 'deterministic-fallback';
     }
 
-    const finalReply = enforceMax500Chars(rawReply);
+    const finalReply = enforceMax480Chars(rawReply);
 
     return NextResponse.json(
       {
         reply: finalReply,
         charCount: finalReply.length,
-        systemPrompt: MOTIVATIONAL_COACH_SYSTEM_PROMPT,
+        agentMode,
+        dbQueryDetails,
+        systemPrompt: systemInstruction,
         provider: keyProvider,
       },
       { status: 200 }
     );
   } catch (error) {
     const errMsg =
-      error instanceof Error ? error.message : 'Failed to generate AI coach reply';
+      error instanceof Error ? error.message : 'Failed to generate agent reply';
     return NextResponse.json({ error: errMsg }, { status: 500 });
   }
 }

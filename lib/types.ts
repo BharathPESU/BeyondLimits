@@ -241,6 +241,13 @@ export interface MotivationalChatMessage {
   charCount: number;
   createdAt: string;
   viaVoice?: boolean;
+  agentMode?: boolean;
+  dbQueryDetails?: {
+    queryType?: string;
+    targetDate?: string;
+    table?: string;
+    summary?: string;
+  };
 }
 
 export interface PuterTxt2SpeechOptions {

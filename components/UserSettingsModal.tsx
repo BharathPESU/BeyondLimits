@@ -16,6 +16,8 @@ import {
   ShieldCheck,
   User,
   Zap,
+  Bot,
+  Mic,
 } from 'lucide-react';
 
 interface UserSettingsModalProps {
@@ -40,6 +42,8 @@ export default function UserSettingsModal({
     message: string;
   } | null>(null);
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
+  const [wakeUpWord, setWakeUpWord] = useState<string>('Jarvis');
+  const [wakeWordSaveStatus, setWakeWordSaveStatus] = useState<string | null>(null);
 
   // Hydrate stored API key from localStorage and Clerk metadata
   useEffect(() => {
@@ -51,6 +55,10 @@ export default function UserSettingsModal({
       if (stored) {
         setApiKey(stored);
       }
+      const storedWakeWord = localStorage.getItem('beyondlimits_wakeup_word');
+      if (storedWakeWord) {
+        setWakeUpWord(storedWakeWord);
+      }
     } catch {}
 
     // Hydrate from Clerk metadata if available
@@ -58,6 +66,9 @@ export default function UserSettingsModal({
       const meta = (user.unsafeMetadata || {}) as Record<string, string>;
       if (meta.geminiApiKey) {
         setApiKey(meta.geminiApiKey);
+      }
+      if (meta.wakeUpWord) {
+        setWakeUpWord(meta.wakeUpWord);
       }
     }
   }, [isOpen, isLoaded, user]);
@@ -164,6 +175,32 @@ export default function UserSettingsModal({
       setSaveStatus('Custom API key removed. Using Vercel server key fallback.');
       setTimeout(() => setSaveStatus(null), 4000);
     } catch {}
+  };
+
+  // Save custom wake-up word
+  const handleSaveWakeWord = async (customWord?: string) => {
+    const wordToSave = (customWord !== undefined ? customWord : wakeUpWord).trim();
+    if (!wordToSave) return;
+    setWakeUpWord(wordToSave);
+    try {
+      localStorage.setItem('beyondlimits_wakeup_word', wordToSave);
+      if (user) {
+        await user.update({
+          unsafeMetadata: {
+            ...user.unsafeMetadata,
+            wakeUpWord: wordToSave,
+          },
+        });
+      }
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('beyondlimits_agent_config_changed'));
+      }
+      setWakeWordSaveStatus(`Wake-up word updated to "${wordToSave}"!`);
+      setTimeout(() => setWakeWordSaveStatus(null), 3500);
+    } catch {
+      setWakeWordSaveStatus('Failed to save wake-up word.');
+      setTimeout(() => setWakeWordSaveStatus(null), 3500);
+    }
   };
 
   return (
@@ -344,6 +381,71 @@ export default function UserSettingsModal({
               <span>Clear</span>
             </button>
           </div>
+        </div>
+
+        {/* Autonomous Agent & Wake-Up Word Settings Card */}
+        <div className="bg-emerald-50/70 border border-emerald-200 rounded-2xl p-4 sm:p-5 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Bot className="w-4 h-4 text-emerald-700" />
+              <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-950">
+                Autonomous Agent Wake-Up Word
+              </h4>
+            </div>
+            <span className="text-[10px] text-emerald-800 font-bold bg-emerald-100 px-2 py-0.5 rounded-md border border-emerald-300">
+              Voice Trigger
+            </span>
+          </div>
+
+          <p className="text-xs text-emerald-900 leading-relaxed">
+            When Agent Mode is toggled <strong>ON</strong> on your dashboard, your microphone continuously listens. Speak your wake-up word to activate the 3D Arc Reactor and interact hands-free:
+          </p>
+
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+            <div className="relative flex-1">
+              <input
+                type="text"
+                value={wakeUpWord}
+                onChange={(e) => setWakeUpWord(e.target.value)}
+                placeholder="e.g. Jarvis"
+                className="w-full px-3.5 py-2.5 bg-white border border-emerald-300 focus:border-emerald-600 rounded-xl text-xs sm:text-sm font-bold text-emerald-950 outline-none"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => handleSaveWakeWord()}
+              className="min-h-[40px] px-4 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm"
+            >
+              <Mic className="w-3.5 h-3.5" />
+              <span>Save Word</span>
+            </button>
+          </div>
+
+          {/* Quick presets */}
+          <div className="flex items-center gap-1.5 flex-wrap pt-1 text-[11px] text-emerald-900">
+            <span className="text-emerald-700 font-medium">Quick Choices:</span>
+            {['Jarvis', 'Friday', 'Coach', 'Titan'].map((preset) => (
+              <button
+                key={preset}
+                type="button"
+                onClick={() => handleSaveWakeWord(preset)}
+                className={`px-2 py-0.5 rounded-lg border text-xs font-semibold cursor-pointer transition-colors ${
+                  wakeUpWord.toLowerCase() === preset.toLowerCase()
+                    ? 'bg-emerald-700 text-white border-emerald-700'
+                    : 'bg-white hover:bg-emerald-100 text-emerald-800 border-emerald-300'
+                }`}
+              >
+                {preset}
+              </button>
+            ))}
+          </div>
+
+          {wakeWordSaveStatus && (
+            <div className="p-2 rounded-xl bg-emerald-100 border border-emerald-300 text-xs font-semibold text-emerald-900 flex items-center gap-1.5">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+              <span>{wakeWordSaveStatus}</span>
+            </div>
+          )}
         </div>
 
         {/* Fallback Architecture Card */}
