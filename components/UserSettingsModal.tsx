@@ -19,6 +19,7 @@ import {
   Square,
   Plus,
   RefreshCw,
+  KeyRound,
 } from 'lucide-react';
 import {
   isBiometricSupported,
@@ -26,6 +27,9 @@ import {
   setBiometricLockEnabled,
   verifyDeviceBiometric,
   registerLocalBiometricCredential,
+  hasAppPin,
+  setAppPin,
+  removeAppPin,
 } from '@/lib/biometric-auth';
 import {
   MAX_GEMINI_KEYS,
@@ -78,12 +82,19 @@ export default function UserSettingsModal({
   const [isTestingBiometric, setIsTestingBiometric] = useState<boolean>(false);
   const [biometricTestStatus, setBiometricTestStatus] = useState<string | null>(null);
 
+  // App PIN State
+  const [hasConfiguredPin, setHasConfiguredPin] = useState<boolean>(false);
+  const [pinValue, setPinValue] = useState<string>('');
+  const [showPinInput, setShowPinInput] = useState<boolean>(false);
+  const [pinStatus, setPinStatus] = useState<string | null>(null);
+
   // Hydrate stored settings on open
   useEffect(() => {
     if (!isOpen) return;
 
     isBiometricSupported().then((supported) => setBiometricSupported(supported));
     setBiometricEnabled(isBiometricLockEnabled() || (user?.passkeys?.length ?? 0) > 0);
+    setHasConfiguredPin(hasAppPin());
 
     // 1. Load Gemini Keys
     const storedKeys = getStoredGeminiKeys();
@@ -370,6 +381,29 @@ export default function UserSettingsModal({
     } finally {
       setIsTestingBiometric(false);
     }
+  };
+
+  const handleSavePin = async () => {
+    const trimmed = pinValue.trim();
+    if (!trimmed || trimmed.length !== 4 || !/^\d{4}$/.test(trimmed)) {
+      setPinStatus('PIN must be exactly 4 numeric digits.');
+      return;
+    }
+    await setAppPin(trimmed);
+    setHasConfiguredPin(true);
+    setShowPinInput(false);
+    setPinValue('');
+    setPinStatus('4-digit PIN saved successfully!');
+    setTimeout(() => setPinStatus(null), 3500);
+  };
+
+  const handleRemovePin = () => {
+    removeAppPin();
+    setHasConfiguredPin(false);
+    setShowPinInput(false);
+    setPinValue('');
+    setPinStatus('PIN removed.');
+    setTimeout(() => setPinStatus(null), 3000);
   };
 
   const currentRRIndex = getCurrentRoundRobinIndex();
@@ -800,6 +834,82 @@ export default function UserSettingsModal({
                   {biometricTestStatus}
                 </p>
               )}
+
+              {/* 4-Digit Backup PIN Configuration */}
+              <div className="pt-2 border-t border-emerald-200/50 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <KeyRound className="w-3.5 h-3.5 text-emerald-700" />
+                    <span className="text-[11px] font-bold text-slate-800">
+                      Security PIN Backup
+                    </span>
+                  </div>
+                  {!showPinInput && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowPinInput(true);
+                        setPinValue('');
+                        setPinStatus(null);
+                      }}
+                      className="text-[10px] font-bold text-emerald-700 hover:text-emerald-900 transition-colors cursor-pointer"
+                    >
+                      {hasConfiguredPin ? 'Change PIN' : '+ Set 4-Digit PIN'}
+                    </button>
+                  )}
+                </div>
+
+                {hasConfiguredPin && !showPinInput && (
+                  <div className="flex items-center justify-between text-[11px] text-slate-600">
+                    <span>4-digit backup PIN is active (••••)</span>
+                    <button
+                      type="button"
+                      onClick={handleRemovePin}
+                      className="text-[10px] text-rose-600 hover:text-rose-800 font-semibold cursor-pointer"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                )}
+
+                {showPinInput && (
+                  <div className="flex items-center gap-2 pt-1">
+                    <input
+                      type="password"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      maxLength={4}
+                      value={pinValue}
+                      onChange={(e) => setPinValue(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                      placeholder="4 digits"
+                      className="w-24 px-2.5 py-1 text-center font-mono tracking-widest text-xs bg-white border border-slate-300 rounded-lg outline-none focus:border-emerald-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleSavePin}
+                      className="px-2.5 py-1 text-[11px] font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors cursor-pointer"
+                    >
+                      Save
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowPinInput(false);
+                        setPinValue('');
+                      }}
+                      className="px-2 py-1 text-[11px] text-slate-600 hover:text-slate-800 cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                )}
+
+                {pinStatus && (
+                  <p className="text-[10px] font-semibold text-emerald-800">
+                    {pinStatus}
+                  </p>
+                )}
+              </div>
             </div>
           )}
         </div>
