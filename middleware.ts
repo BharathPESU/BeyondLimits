@@ -23,6 +23,7 @@ const isPublicRoute = createRouteMatcher([
   '/api/admin/logout(.*)',
   '/api/settings/verify-gemini(.*)',
   '/api/chat(.*)',
+  '/api/tts(.*)',
   '/api/songs(.*)',
   '/api/workout/routines(.*)',
   '/admin(.*)',

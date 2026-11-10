@@ -8,6 +8,14 @@ const config: CapacitorConfig = {
     url: 'https://project-vuxsx.vercel.app',
     cleartext: true,
     androidScheme: 'https',
+    allowNavigation: [
+      'project-vuxsx.vercel.app',
+      '*.vercel.app',
+      '*.clerk.accounts.dev',
+      '*.clerk.com',
+      'accounts.google.com',
+      '*.google.com',
+    ],
   },
   android: {
     allowMixedContent: true,

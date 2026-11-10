@@ -522,10 +522,67 @@ export default function DisciplineDashboardClient({
     async (scriptText: string, isAutoMount = false): Promise<void> => {
       stopVoice();
 
+      const voiceSettings = getJarvisVoiceSettings();
+
+      // 1. Primary: Native Gemini Text-To-Speech (gemini-3.8-flash-tts) with emotions
+      try {
+        const candidateKeys = getRoundRobinGeminiKeys();
+        const primaryKey = candidateKeys[0] || '';
+        const ttsRes = await fetch('/api/tts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            text: scriptText,
+            voiceName: voiceSettings.geminiVoice,
+            emotion: voiceSettings.emotion,
+            userApiKey: primaryKey,
+            userApiKeys: candidateKeys,
+          }),
+        });
+
+        if (ttsRes.ok) {
+          const ttsData = await ttsRes.json();
+          if (ttsData.success && ttsData.audioBase64) {
+            const audio = new Audio(
+              `data:${ttsData.mimeType || 'audio/wav'};base64,${ttsData.audioBase64}`
+            );
+            audio.playbackRate = voiceSettings.rate || 1.0;
+            activeAudioRef.current = audio;
+
+            await new Promise<void>((resolve, reject) => {
+              audio.onplay = () => {
+                setIsSpeaking(true);
+                startAudioTelemetryLoop(audio);
+              };
+              audio.onended = () => {
+                stopAudioTelemetryLoop();
+                setIsSpeaking(false);
+                resolve();
+              };
+              audio.onpause = () => {
+                stopAudioTelemetryLoop();
+                setIsSpeaking(false);
+                resolve();
+              };
+              audio.onerror = () => {
+                stopAudioTelemetryLoop();
+                setIsSpeaking(false);
+                reject(new Error('Audio element error'));
+              };
+              audio.play().catch(reject);
+            });
+            return;
+          }
+        }
+      } catch (err) {
+        console.warn('Gemini TTS failed, attempting Puter fallback:', err);
+      }
+
+      // 2. Secondary fallback: Puter.js AWS Polly Neural
       let puterObj = typeof window !== 'undefined' ? window.puter : undefined;
       if (!puterObj && typeof window !== 'undefined') {
-        for (let i = 0; i < 8; i++) {
-          await new Promise((r) => setTimeout(r, 120));
+        for (let i = 0; i < 6; i++) {
+          await new Promise((r) => setTimeout(r, 100));
           if (window.puter?.ai?.txt2speech) {
             puterObj = window.puter;
             break;
@@ -535,7 +592,6 @@ export default function DisciplineDashboardClient({
 
       if (puterObj?.ai?.txt2speech) {
         try {
-          const voiceSettings = getJarvisVoiceSettings();
           const audio = await puterObj.ai.txt2speech(scriptText, {
             provider: 'aws-polly',
             voice: voiceSettings.puterVoice || 'Matthew',
@@ -576,6 +632,7 @@ export default function DisciplineDashboardClient({
         }
       }
 
+      // 3. Final fallback: Web Speech API
       await playBrowserMaleFallbackPromise(scriptText);
     },
     [
@@ -703,7 +760,8 @@ export default function DisciplineDashboardClient({
 
           setAgentTranscript(cleaned);
 
-          const lowerTranscript = cleaned.toLowerCase();
+          const fullSpoken = `${agentTranscript} ${cleaned}`.trim();
+          const lowerTranscript = fullSpoken.toLowerCase();
           const targetWakeWord = wakeUpWordRef.current.toLowerCase();
 
           if (
@@ -716,20 +774,24 @@ export default function DisciplineDashboardClient({
               recognition.stop();
             } catch {}
 
-            const wakeIndex = lowerTranscript.indexOf(targetWakeWord);
-            const afterWake = cleaned
-              .slice(wakeIndex + targetWakeWord.length)
+            // Extract the user's question by stripping the wake word anywhere from the sentence
+            const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const question = fullSpoken
+              .replace(new RegExp(`\\b${escapeRegex(targetWakeWord)}\\b`, 'gi'), '')
+              .replace(/^(hey|hello|hi|ok|okay|please)\s+/gi, '')
               .replace(/^[,.!?\s]+/, '')
+              .replace(/[,.!?\s]+$/, '')
               .trim();
 
             const currentName = displayNameRef.current || 'Bharath';
 
-            if (
-              afterWake.length === 0 ||
-              /^(hey|hello|hi|are you there|listen|wake up)[?!.]*$/i.test(afterWake)
-            ) {
-              // Just the wake word
-              const greeting = `Hey ${currentName}, how are you doing? I am listening.`;
+            const isJustGreeting =
+              question.length === 0 ||
+              /^(hey|hello|hi|are you there|listen|wake up)[?!.]*$/i.test(question);
+
+            if (isJustGreeting) {
+              // Just the wake word: greet and state capabilities
+              const greeting = `Hey ${currentName}, I am locked in and listening. Ask me about your attendance, workouts, or triggers.`;
               setChatMessages((prev) => [
                 ...prev,
                 {
@@ -748,14 +810,14 @@ export default function DisciplineDashboardClient({
               setAgentVoiceStatus(`Responded to "${wakeUpWordRef.current}"`);
               await speakCustomText(greeting);
             } else {
-              // Wake word with a query/question
+              // Wake word with a query/question (e.g., "what can you do for me")
               setChatMessages((prev) => [
                 ...prev,
                 {
                   id: `user-${Date.now()}`,
                   role: 'user',
-                  content: afterWake,
-                  charCount: afterWake.length,
+                  content: question,
+                  charCount: question.length,
                   createdAt: new Date().toLocaleTimeString([], {
                     hour: '2-digit',
                     minute: '2-digit',
@@ -765,7 +827,7 @@ export default function DisciplineDashboardClient({
                 },
               ]);
 
-              setAgentVoiceStatus(`Querying database for "${afterWake}"...`);
+              setAgentVoiceStatus(`Querying database for "${question}"...`);
 
               try {
                 const candidateKeys = getRoundRobinGeminiKeys();
@@ -777,7 +839,7 @@ export default function DisciplineDashboardClient({
                     ...(primaryKey ? { 'x-gemini-api-key': primaryKey } : {}),
                   },
                   body: JSON.stringify({
-                    message: afterWake,
+                    message: question,
                     agentMode: true,
                     userName: currentName,
                     userApiKey: primaryKey,
@@ -1528,9 +1590,10 @@ export default function DisciplineDashboardClient({
             type="button"
             onClick={() => setIsChatOpen(true)}
             className="min-h-[46px] rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-900 font-semibold text-[11px] flex flex-col items-center justify-center gap-0.5 transition-colors cursor-pointer"
+            title="Open Autonomous Discipline Agent"
           >
-            <MessageSquare className="w-4 h-4 text-teal-700" />
-            <span>Chat</span>
+            <Bot className="w-4 h-4 text-emerald-600" />
+            <span>Agent</span>
           </button>
         </div>
       </nav>

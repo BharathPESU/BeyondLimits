@@ -36,6 +36,7 @@ import {
   getCurrentRoundRobinIndex,
   getJarvisVoiceSettings,
   saveJarvisVoiceSettings,
+  playGeminiTTSAudio,
 } from '@/lib/gemini-keys';
 
 interface UserSettingsModalProps {
@@ -61,7 +62,8 @@ export default function UserSettingsModal({
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
 
   // Jarvis Voice Configuration State
-  const [selectedVoiceId, setSelectedVoiceId] = useState<string>('matthew');
+  const [selectedVoiceId, setSelectedVoiceId] = useState<string>('puck');
+  const [voiceEmotion, setVoiceEmotion] = useState<'energetic_confident' | 'fierce_discipline' | 'calm_focus'>('energetic_confident');
   const [voiceRate, setVoiceRate] = useState<number>(1.0);
   const [isPlayingDemo, setIsPlayingDemo] = useState<boolean>(false);
   const demoAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -90,6 +92,7 @@ export default function UserSettingsModal({
     // 2. Load Voice Settings
     const voiceSettings = getJarvisVoiceSettings();
     setSelectedVoiceId(voiceSettings.voiceId);
+    setVoiceEmotion(voiceSettings.emotion);
     setVoiceRate(voiceSettings.rate);
 
     // 3. Load Wake Word
@@ -212,7 +215,7 @@ export default function UserSettingsModal({
     }
   };
 
-  // Play voice demo sample for selected voice
+  // Play voice demo sample for selected voice using Gemini TTS (with fallback)
   const handlePlayVoiceDemo = async () => {
     if (isPlayingDemo) {
       if (demoAudioRef.current) {
@@ -229,6 +232,21 @@ export default function UserSettingsModal({
     const voice = JARVIS_VOICE_OPTIONS.find((v) => v.id === selectedVoiceId) || JARVIS_VOICE_OPTIONS[0];
     setIsPlayingDemo(true);
 
+    // 1. Prioritize Gemini Text-to-Speech (gemini-3.8-flash-tts) with selected emotion
+    try {
+      const audio = await playGeminiTTSAudio(voice.sampleText, {
+        voiceName: voice.geminiVoice,
+        emotion: voiceEmotion,
+        onEnd: () => setIsPlayingDemo(false),
+        onError: () => {},
+      });
+      if (audio) {
+        demoAudioRef.current = audio;
+        return;
+      }
+    } catch {}
+
+    // 2. Fallback to Puter.js
     try {
       let puterObj = typeof window !== 'undefined' ? window.puter : undefined;
       if (!puterObj && typeof window !== 'undefined') {
@@ -256,7 +274,7 @@ export default function UserSettingsModal({
       }
     } catch {}
 
-    // Fallback to Web Speech API
+    // 3. Fallback to Web Speech API
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       try {
         window.speechSynthesis.cancel();
@@ -276,12 +294,26 @@ export default function UserSettingsModal({
   // Save Voice selection
   const handleSaveVoice = (newVoiceId: string) => {
     setSelectedVoiceId(newVoiceId);
-    saveJarvisVoiceSettings({ voiceId: newVoiceId, rate: voiceRate });
+    saveJarvisVoiceSettings({ voiceId: newVoiceId, emotion: voiceEmotion, rate: voiceRate });
     if (user) {
       user.update({
         unsafeMetadata: {
           ...user.unsafeMetadata,
           jarvisVoiceId: newVoiceId,
+        },
+      }).catch(() => {});
+    }
+  };
+
+  // Save Emotion selection
+  const handleSaveEmotion = (newEmotion: 'energetic_confident' | 'fierce_discipline' | 'calm_focus') => {
+    setVoiceEmotion(newEmotion);
+    saveJarvisVoiceSettings({ voiceId: selectedVoiceId, emotion: newEmotion, rate: voiceRate });
+    if (user) {
+      user.update({
+        unsafeMetadata: {
+          ...user.unsafeMetadata,
+          jarvisVoiceEmotion: newEmotion,
         },
       }).catch(() => {});
     }
@@ -570,6 +602,53 @@ export default function UserSettingsModal({
                   </button>
                 );
               })}
+            </div>
+          </div>
+
+          {/* Emotion & Tone Mode (User-configurable inline emotion) */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-slate-700 block">
+              Jarvis Emotion &amp; Motivation Style:
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() => handleSaveEmotion('energetic_confident')}
+                className={`py-2 px-2 rounded-xl border text-center transition-all cursor-pointer ${
+                  voiceEmotion === 'energetic_confident'
+                    ? 'bg-teal-50 border-teal-600 text-teal-950 ring-1 ring-teal-500 font-bold'
+                    : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100 font-medium'
+                }`}
+              >
+                <span className="text-[11px] block">Energetic</span>
+                <span className="text-[9px] text-slate-500 block">High confidence</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleSaveEmotion('fierce_discipline')}
+                className={`py-2 px-2 rounded-xl border text-center transition-all cursor-pointer ${
+                  voiceEmotion === 'fierce_discipline'
+                    ? 'bg-teal-50 border-teal-600 text-teal-950 ring-1 ring-teal-500 font-bold'
+                    : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100 font-medium'
+                }`}
+              >
+                <span className="text-[11px] block">Fierce</span>
+                <span className="text-[9px] text-slate-500 block">Iron discipline</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleSaveEmotion('calm_focus')}
+                className={`py-2 px-2 rounded-xl border text-center transition-all cursor-pointer ${
+                  voiceEmotion === 'calm_focus'
+                    ? 'bg-teal-50 border-teal-600 text-teal-950 ring-1 ring-teal-500 font-bold'
+                    : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100 font-medium'
+                }`}
+              >
+                <span className="text-[11px] block">Calm Focus</span>
+                <span className="text-[9px] text-slate-500 block">Stoic depth</span>
+              </button>
             </div>
           </div>
 

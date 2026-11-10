@@ -15,56 +15,63 @@ export const STORAGE_RR_INDEX = 'beyondlimits_gemini_rr_index';
 export const STORAGE_VOICE_ID = 'beyondlimits_jarvis_voice_id';
 export const STORAGE_VOICE_RATE = 'beyondlimits_jarvis_voice_rate';
 export const STORAGE_VOICE_PITCH = 'beyondlimits_jarvis_voice_pitch';
+export const STORAGE_VOICE_EMOTION = 'beyondlimits_jarvis_voice_emotion';
 
 export interface JarvisVoiceOption {
   id: string;
   name: string;
   subtitle: string;
   gender: 'male' | 'female';
+  geminiVoice: 'Puck' | 'Charon' | 'Kore' | 'Fenrir' | 'Aoede';
   puterVoice: string;
   sampleText: string;
 }
 
 export const JARVIS_VOICE_OPTIONS: JarvisVoiceOption[] = [
   {
-    id: 'matthew',
-    name: 'Jarvis Prime (Matthew)',
-    subtitle: 'Deep, commanding stoic British mentor',
+    id: 'puck',
+    name: 'Jarvis Dynamic (Puck)',
+    subtitle: 'Energetic, confident, motivating brotherly tone',
     gender: 'male',
+    geminiVoice: 'Puck',
     puterVoice: 'Matthew',
-    sampleText: 'Greetings. I am Jarvis. Ready to forge unbreakable discipline and conquer today.',
+    sampleText: 'Greetings. I am Jarvis. Conquering urges builds unstoppable power. Let us work!',
   },
   {
-    id: 'brian',
-    name: 'Jarvis Tactical (Brian)',
-    subtitle: 'Authoritative British iron-will commander',
+    id: 'charon',
+    name: 'Jarvis Stoic (Charon)',
+    subtitle: 'Deep, commanding stoic masculine mentor',
     gender: 'male',
+    geminiVoice: 'Charon',
     puterVoice: 'Brian',
-    sampleText: 'Discipline is your highest duty. Master your mind, conquer all weakness.',
+    sampleText: 'Discipline is your highest duty. Master your mind, conquer all weakness today.',
   },
   {
-    id: 'arthur',
-    name: 'Jarvis Precision (Arthur)',
-    subtitle: 'Crisp, calculated tactical AI voice',
+    id: 'fenrir',
+    name: 'Jarvis Spartan (Fenrir)',
+    subtitle: 'Fierce, intense, iron-will commanding coach',
     gender: 'male',
-    puterVoice: 'Arthur',
-    sampleText: 'Systems online. Your clean streak is your fortress. Never surrender ground.',
-  },
-  {
-    id: 'joey',
-    name: 'Jarvis Spartan (Joey)',
-    subtitle: 'Direct, gritty, high-energy masculine discipline',
-    gender: 'male',
+    geminiVoice: 'Fenrir',
     puterVoice: 'Joey',
-    sampleText: 'Stand tall. Every urge defeated transforms into raw athletic power. Let us work.',
+    sampleText: 'Stand tall. Every urge defeated transforms into raw athletic power. Lead now.',
   },
   {
-    id: 'amy',
-    name: 'Jarvis Athena (Amy)',
+    id: 'kore',
+    name: 'Jarvis Athena (Kore)',
     subtitle: 'Sharp, relentless, focused feminine intelligence',
     gender: 'female',
+    geminiVoice: 'Kore',
     puterVoice: 'Amy',
     sampleText: 'Focus your mind. Pain of discipline is temporary; pain of regret is forever.',
+  },
+  {
+    id: 'aoede',
+    name: 'Jarvis Wisdom (Aoede)',
+    subtitle: 'Calm, confident, uplifting stoic guide',
+    gender: 'female',
+    geminiVoice: 'Aoede',
+    puterVoice: 'Arthur',
+    sampleText: 'Systems online. Your clean streak is your fortress. Never surrender ground.',
   },
 ];
 
@@ -171,32 +178,63 @@ export function getCurrentRoundRobinIndex(): number {
  */
 export function getJarvisVoiceSettings(): {
   voiceId: string;
+  geminiVoice: 'Puck' | 'Charon' | 'Kore' | 'Fenrir' | 'Aoede';
   puterVoice: string;
+  emotion: 'energetic_confident' | 'fierce_discipline' | 'calm_focus';
   rate: number;
   pitch: number;
 } {
   if (typeof window === 'undefined') {
-    return { voiceId: 'matthew', puterVoice: 'Matthew', rate: 1.0, pitch: 1.0 };
+    return {
+      voiceId: 'puck',
+      geminiVoice: 'Puck',
+      puterVoice: 'Matthew',
+      emotion: 'energetic_confident',
+      rate: 1.0,
+      pitch: 1.0,
+    };
   }
 
   try {
-    const voiceId = localStorage.getItem(STORAGE_VOICE_ID) || 'matthew';
+    const voiceId = localStorage.getItem(STORAGE_VOICE_ID) || 'puck';
+    const emotionStr = (localStorage.getItem(STORAGE_VOICE_EMOTION) || 'energetic_confident') as
+      | 'energetic_confident'
+      | 'fierce_discipline'
+      | 'calm_focus';
     const rateStr = localStorage.getItem(STORAGE_VOICE_RATE);
     const pitchStr = localStorage.getItem(STORAGE_VOICE_PITCH);
 
-    const option = JARVIS_VOICE_OPTIONS.find((v) => v.id === voiceId) || JARVIS_VOICE_OPTIONS[0];
+    // Backward compatibility with previous IDs
+    let option = JARVIS_VOICE_OPTIONS.find((v) => v.id === voiceId);
+    if (!option) {
+      if (voiceId === 'matthew') option = JARVIS_VOICE_OPTIONS[0];
+      else if (voiceId === 'brian') option = JARVIS_VOICE_OPTIONS[1];
+      else if (voiceId === 'joey') option = JARVIS_VOICE_OPTIONS[2];
+      else if (voiceId === 'amy') option = JARVIS_VOICE_OPTIONS[3];
+      else if (voiceId === 'arthur') option = JARVIS_VOICE_OPTIONS[4];
+      else option = JARVIS_VOICE_OPTIONS[0];
+    }
 
     const rate = rateStr ? parseFloat(rateStr) : 1.0;
     const pitch = pitchStr ? parseFloat(pitchStr) : 1.0;
 
     return {
       voiceId: option.id,
+      geminiVoice: option.geminiVoice,
       puterVoice: option.puterVoice,
+      emotion: emotionStr,
       rate: isNaN(rate) ? 1.0 : rate,
       pitch: isNaN(pitch) ? 1.0 : pitch,
     };
   } catch {
-    return { voiceId: 'matthew', puterVoice: 'Matthew', rate: 1.0, pitch: 1.0 };
+    return {
+      voiceId: 'puck',
+      geminiVoice: 'Puck',
+      puterVoice: 'Matthew',
+      emotion: 'energetic_confident',
+      rate: 1.0,
+      pitch: 1.0,
+    };
   }
 }
 
@@ -205,6 +243,7 @@ export function getJarvisVoiceSettings(): {
  */
 export function saveJarvisVoiceSettings(settings: {
   voiceId?: string;
+  emotion?: 'energetic_confident' | 'fierce_discipline' | 'calm_focus';
   rate?: number;
   pitch?: number;
 }): void {
@@ -212,6 +251,9 @@ export function saveJarvisVoiceSettings(settings: {
   try {
     if (settings.voiceId) {
       localStorage.setItem(STORAGE_VOICE_ID, settings.voiceId);
+    }
+    if (settings.emotion) {
+      localStorage.setItem(STORAGE_VOICE_EMOTION, settings.emotion);
     }
     if (settings.rate !== undefined) {
       localStorage.setItem(STORAGE_VOICE_RATE, String(settings.rate));
@@ -221,3 +263,68 @@ export function saveJarvisVoiceSettings(settings: {
     }
   } catch {}
 }
+
+/**
+ * Play speech using native Gemini Text-to-Speech (gemini-3.8-flash-tts)
+ * with inline emotions and automatic fallback.
+ */
+export async function playGeminiTTSAudio(
+  text: string,
+  options?: {
+    voiceName?: string;
+    emotion?: string;
+    onEnd?: () => void;
+    onError?: (err: unknown) => void;
+  }
+): Promise<HTMLAudioElement | null> {
+  if (typeof window === 'undefined') return null;
+
+  try {
+    const voiceSettings = getJarvisVoiceSettings();
+    const candidateKeys = getRoundRobinGeminiKeys();
+    const primaryKey = candidateKeys[0] || '';
+
+    const res = await fetch('/api/tts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        text,
+        voiceName: options?.voiceName || voiceSettings.geminiVoice,
+        emotion: options?.emotion || voiceSettings.emotion,
+        userApiKey: primaryKey,
+        userApiKeys: candidateKeys,
+      }),
+    });
+
+    if (res.ok) {
+      const data = (await res.json()) as {
+        success?: boolean;
+        audioBase64?: string;
+        mimeType?: string;
+      };
+
+      if (data.success && data.audioBase64) {
+        const audioSrc = `data:${data.mimeType || 'audio/wav'};base64,${data.audioBase64}`;
+        const audio = new Audio(audioSrc);
+        audio.playbackRate = voiceSettings.rate || 1.0;
+
+        if (options?.onEnd) {
+          audio.onended = options.onEnd;
+        }
+        if (options?.onError) {
+          audio.onerror = options.onError;
+        }
+
+        await audio.play();
+        return audio;
+      }
+    }
+  } catch (err) {
+    console.warn('Gemini TTS playback request failed:', err);
+    if (options?.onError) {
+      options.onError(err);
+    }
+  }
+  return null;
+}
+

@@ -6,13 +6,40 @@
  * Fingerprint sensor, or Face ID.
  */
 
-// Convert a string to an ArrayBuffer for WebAuthn BufferSource
+// Convert a string to an ArrayBuffer for WebAuthn user ID
 function strToArrayBuffer(str: string): ArrayBuffer {
   const encoder = new TextEncoder();
   const uint8 = encoder.encode(str);
   const buffer = new ArrayBuffer(uint8.byteLength);
   new Uint8Array(buffer).set(uint8);
   return buffer;
+}
+
+// Convert ArrayBuffer to URL-safe Base64 string (Standard WebAuthn format)
+function bufferToBase64Url(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary)
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
+}
+
+// Convert URL-safe Base64 string back to ArrayBuffer
+function base64UrlToBuffer(base64url: string): ArrayBuffer {
+  let base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
+  while (base64.length % 4) {
+    base64 += '=';
+  }
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes.buffer;
 }
 
 /**
@@ -134,9 +161,10 @@ export async function registerLocalBiometricCredential(
       },
     })) as PublicKeyCredential | null;
 
-    if (credential && credential.id) {
-      localStorage.setItem(STORAGE_KEY_LOCAL_CRED_ID, credential.id);
-      return credential.id;
+    if (credential) {
+      const b64Id = bufferToBase64Url(credential.rawId);
+      localStorage.setItem(STORAGE_KEY_LOCAL_CRED_ID, b64Id);
+      return b64Id;
     }
     return null;
   } catch (err: unknown) {
@@ -152,6 +180,7 @@ export async function registerLocalBiometricCredential(
 export async function verifyDeviceBiometric(): Promise<{
   success: boolean;
   error?: string;
+  needsEnrollment?: boolean;
 }> {
   if (typeof window === 'undefined') {
     return { success: false, error: 'Not running in a browser environment' };
@@ -169,26 +198,44 @@ export async function verifyDeviceBiometric(): Promise<{
     window.crypto.getRandomValues(challenge);
 
     const savedCredId = localStorage.getItem(STORAGE_KEY_LOCAL_CRED_ID);
-    const allowCredentials = savedCredId
-      ? [
-          {
-            id: strToArrayBuffer(savedCredId),
-            type: 'public-key' as const,
-            transports: ['internal' as const],
-          },
-        ]
-      : undefined;
+    let assertion: Credential | null = null;
 
-    // Request native OS screen lock / fingerprint verification
-    const assertion = await navigator.credentials.get({
-      publicKey: {
-        challenge,
-        rpId: window.location.hostname,
-        userVerification: 'required', // Forces fingerprint / screen lock
-        allowCredentials,
-        timeout: 60000,
-      },
-    });
+    // First attempt: if we have a saved credential ID, try it with proper Base64URL bytes
+    if (savedCredId) {
+      try {
+        const credBuffer = base64UrlToBuffer(savedCredId);
+        assertion = await navigator.credentials.get({
+          publicKey: {
+            challenge,
+            rpId: window.location.hostname,
+            userVerification: 'required',
+            allowCredentials: [
+              {
+                id: credBuffer,
+                type: 'public-key' as const,
+                transports: ['internal' as const],
+              },
+            ],
+            timeout: 60000,
+          },
+        });
+      } catch (firstErr) {
+        // If specific credential failed (e.g., origin or device mismatch), fall through to discoverable assertion
+        console.warn('Targeted credential assertion fallback:', firstErr);
+      }
+    }
+
+    // Second attempt: Discoverable assertion (any platform authenticator / screen lock on this device)
+    if (!assertion) {
+      assertion = await navigator.credentials.get({
+        publicKey: {
+          challenge,
+          rpId: window.location.hostname,
+          userVerification: 'required',
+          timeout: 60000,
+        },
+      });
+    }
 
     if (assertion) {
       setSessionUnlocked(true);
@@ -197,7 +244,15 @@ export async function verifyDeviceBiometric(): Promise<{
     return { success: false, error: 'Verification was not completed' };
   } catch (err: unknown) {
     const errorObj = err as Error;
+    const msg = errorObj.message || '';
     if (errorObj.name === 'NotAllowedError') {
+      if (msg.toLowerCase().includes('no passkey') || msg.toLowerCase().includes('no credentials')) {
+        return {
+          success: false,
+          needsEnrollment: true,
+          error: 'No passkey found on this device. Please register your fingerprint or screen lock.',
+        };
+      }
       return {
         success: false,
         error: 'Screen lock or fingerprint verification was canceled or timed out.',
@@ -205,7 +260,7 @@ export async function verifyDeviceBiometric(): Promise<{
     }
     return {
       success: false,
-      error: errorObj.message || 'Biometric verification failed. Please try again.',
+      error: msg || 'Biometric verification failed. Please try again.',
     };
   }
 }

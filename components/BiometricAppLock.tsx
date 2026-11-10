@@ -382,9 +382,21 @@ export default function BiometricAppLock({ children }: BiometricAppLockProps) {
 
           {/* Error Message if Verification Fails */}
           {errorMessage && (
-            <div className="w-full flex items-center gap-2 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs text-left animate-fadeIn">
-              <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
-              <span className="flex-1">{errorMessage}</span>
+            <div className="w-full flex flex-col gap-2 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs text-left animate-fadeIn">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+                <span className="flex-1">{errorMessage}</span>
+              </div>
+              {/* One-Tap Biometric Re-Enrollment Option if no passkey exists */}
+              <button
+                type="button"
+                onClick={handleEnrollBiometrics}
+                disabled={isEnrolling}
+                className="mt-1 w-full py-1.5 px-3 rounded-lg bg-emerald-600/30 hover:bg-emerald-600/50 border border-emerald-500/40 text-emerald-300 text-[11px] font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+              >
+                <Fingerprint className="w-3.5 h-3.5" />
+                <span>{isEnrolling ? 'Scanning Fingerprint...' : 'Register Fingerprint on This Phone'}</span>
+              </button>
             </div>
           )}
 
