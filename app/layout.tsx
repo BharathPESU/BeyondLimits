@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from 'next';
 import { Plus_Jakarta_Sans, JetBrains_Mono } from 'next/font/google';
 import Script from 'next/script';
 import ServiceWorkerRegister from '@/components/ServiceWorkerRegister';
+import BiometricAppLock from '@/components/BiometricAppLock';
 import './globals.css';
 
 const plusJakarta = Plus_Jakarta_Sans({
@@ -95,7 +96,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           }}
         >
           <ServiceWorkerRegister />
-          {children}
+          <BiometricAppLock>
+            {children}
+          </BiometricAppLock>
         </ClerkProvider>
       </body>
     </html>

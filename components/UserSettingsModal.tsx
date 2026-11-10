@@ -18,7 +18,16 @@ import {
   Zap,
   Bot,
   Mic,
+  Fingerprint,
+  Lock,
 } from 'lucide-react';
+import {
+  isBiometricSupported,
+  isBiometricLockEnabled,
+  setBiometricLockEnabled,
+  verifyDeviceBiometric,
+  registerLocalBiometricCredential,
+} from '@/lib/biometric-auth';
 
 interface UserSettingsModalProps {
   isOpen: boolean;
@@ -45,9 +54,19 @@ export default function UserSettingsModal({
   const [wakeUpWord, setWakeUpWord] = useState<string>('Jarvis');
   const [wakeWordSaveStatus, setWakeWordSaveStatus] = useState<string | null>(null);
 
-  // Hydrate stored API key from localStorage and Clerk metadata
+  // Biometric & Screen Lock State
+  const [biometricEnabled, setBiometricEnabled] = useState<boolean>(false);
+  const [biometricSupported, setBiometricSupported] = useState<boolean>(false);
+  const [isTestingBiometric, setIsTestingBiometric] = useState<boolean>(false);
+  const [biometricTestStatus, setBiometricTestStatus] = useState<string | null>(null);
+  const [isAddingPasskey, setIsAddingPasskey] = useState<boolean>(false);
+
+  // Hydrate stored API key and biometrics from localStorage and Clerk metadata
   useEffect(() => {
     if (!isOpen) return;
+
+    isBiometricSupported().then((supported) => setBiometricSupported(supported));
+    setBiometricEnabled(isBiometricLockEnabled() || (user?.passkeys?.length ?? 0) > 0);
 
     // Load from localStorage
     try {
@@ -200,6 +219,57 @@ export default function UserSettingsModal({
     } catch {
       setWakeWordSaveStatus('Failed to save wake-up word.');
       setTimeout(() => setWakeWordSaveStatus(null), 3500);
+    }
+  };
+
+  // Biometric toggle handler
+  const handleToggleBiometric = async (enabled: boolean) => {
+    setBiometricEnabled(enabled);
+    setBiometricLockEnabled(enabled);
+    if (enabled && (user?.passkeys?.length ?? 0) === 0 && user) {
+      await handleAddPasskey();
+    }
+  };
+
+  // Test native biometric prompt
+  const handleTestBiometric = async () => {
+    setIsTestingBiometric(true);
+    setBiometricTestStatus(null);
+    try {
+      const res = await verifyDeviceBiometric();
+      if (res.success) {
+        setBiometricTestStatus('Verified! Screen lock & fingerprint are functioning properly.');
+      } else {
+        setBiometricTestStatus(res.error || 'Verification failed.');
+      }
+    } catch (e: unknown) {
+      setBiometricTestStatus((e as Error).message || 'Verification error.');
+    } finally {
+      setIsTestingBiometric(false);
+    }
+  };
+
+  // Add Clerk Passkey
+  const handleAddPasskey = async () => {
+    if (!user) return;
+    setIsAddingPasskey(true);
+    setBiometricTestStatus(null);
+    try {
+      if (typeof user.createPasskey === 'function') {
+        await user.createPasskey();
+      }
+      await registerLocalBiometricCredential(
+        user.id,
+        user.primaryEmailAddress?.emailAddress || 'athlete@beyondlimits.app'
+      );
+      setBiometricLockEnabled(true);
+      setBiometricEnabled(true);
+      setBiometricTestStatus('Passkey & screen lock successfully registered with Clerk!');
+    } catch (err: unknown) {
+      const e = err as Error;
+      setBiometricTestStatus(e.message || 'Could not register passkey.');
+    } finally {
+      setIsAddingPasskey(false);
     }
   };
 
@@ -446,6 +516,97 @@ export default function UserSettingsModal({
               <span>{wakeWordSaveStatus}</span>
             </div>
           )}
+        </div>
+
+        {/* Biometric & Screen Lock Security Card (Clerk Passkeys) */}
+        <div className="bg-slate-900 text-white rounded-2xl p-4 sm:p-5 space-y-4 border border-emerald-500/30 shadow-lg">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                <Fingerprint className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-white flex items-center gap-1.5">
+                  <span>Screen Lock &amp; Biometrics</span>
+                  <span className="text-[10px] bg-emerald-500/20 text-emerald-300 font-bold px-1.5 py-0.5 rounded border border-emerald-500/30 uppercase">
+                    Clerk Passkey
+                  </span>
+                </h4>
+                <p className="text-[11px] text-slate-400">
+                  Verify with fingerprint or screen lock on app launch
+                </p>
+              </div>
+            </div>
+
+            {/* Toggle Switch */}
+            <button
+              type="button"
+              role="switch"
+              aria-checked={biometricEnabled}
+              onClick={() => handleToggleBiometric(!biometricEnabled)}
+              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                biometricEnabled ? 'bg-emerald-500' : 'bg-slate-700'
+              }`}
+            >
+              <span
+                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                  biometricEnabled ? 'translate-x-5' : 'translate-x-0'
+                }`}
+              />
+            </button>
+          </div>
+
+          <div className="p-3 rounded-xl bg-slate-950/70 border border-slate-800 text-xs text-slate-300 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-slate-400">Device Biometrics:</span>
+              <span className={`font-semibold ${biometricSupported ? 'text-emerald-400' : 'text-amber-400'}`}>
+                {biometricSupported ? 'Supported (Fingerprint / Face ID)' : 'Standard Screen Lock'}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-slate-400">Registered Clerk Passkeys:</span>
+              <span className="font-semibold text-white">
+                {user?.passkeys?.length ?? 0} credential{(user?.passkeys?.length ?? 0) === 1 ? '' : 's'}
+              </span>
+            </div>
+          </div>
+
+          {biometricTestStatus && (
+            <div className="p-2.5 rounded-xl bg-slate-950 border border-emerald-500/40 text-xs font-medium text-emerald-300 flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>{biometricTestStatus}</span>
+            </div>
+          )}
+
+          <div className="flex flex-col sm:flex-row items-center gap-2 pt-1">
+            <button
+              type="button"
+              onClick={handleTestBiometric}
+              disabled={isTestingBiometric}
+              className="w-full sm:flex-1 min-h-[38px] px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50 border border-slate-700"
+            >
+              {isTestingBiometric ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-400" />
+              ) : (
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+              )}
+              <span>Test Screen Lock</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleAddPasskey}
+              disabled={isAddingPasskey}
+              className="w-full sm:flex-1 min-h-[38px] px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50 shadow-md shadow-emerald-500/20"
+            >
+              {isAddingPasskey ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Fingerprint className="w-3.5 h-3.5" />
+              )}
+              <span>Register Passkey</span>
+            </button>
+          </div>
         </div>
 
         {/* Fallback Architecture Card */}
