@@ -20,10 +20,8 @@ body {
 }
 
 /* ==========================================================================
-   Clerk Custom Styling & Watermark Removal (Clean White Theme)
+   Clerk Custom Styling & Watermark Removal
    ========================================================================== */
-
-/* Completely hide Clerk development mode badges, notices, and "Secured by Clerk" watermark */
 .cl-dev-badge,
 .cl-dev-mode-notice,
 .cl-developmentMode,
@@ -51,32 +49,42 @@ svg[aria-label="Clerk logo"],
   margin: 0 !important;
 }
 
-/* Prevent any circular clipping or giant oval masks */
-.cl-rootBox,
-.cl-cardBox,
+.cl-rootBox {
+  width: 100%;
+}
+
 .cl-card {
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
   border-radius: 1.5rem !important;
-  overflow: visible !important;
-  background-color: transparent !important;
-  box-shadow: none !important;
-  border: none !important;
-  max-width: 100% !important;
+  border: 1px solid #e2e8f0 !important;
+  background-color: #ffffff !important;
+  color: #0f172a !important;
 }
 
-/* Hide duplicate Clerk default headers ("Sign in to My Application") */
-.cl-header,
-.cl-formHeader,
-.cl-headerTitle,
-.cl-headerSubtitle,
-.cl-formHeaderTitle,
-.cl-formHeaderSubtitle {
-  display: none !important;
-  height: 0 !important;
-  margin: 0 !important;
-  padding: 0 !important;
+.cl-headerTitle {
+  color: #0f172a !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.025em !important;
 }
 
-/* Ensure Clerk inputs, labels, and text have crystal clear high contrast on white background */
+.cl-headerSubtitle {
+  color: #64748b !important;
+}
+
+.cl-socialButtonsBlockButton {
+  border: 1px solid #cbd5e1 !important;
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+  font-weight: 600 !important;
+  border-radius: 0.75rem !important;
+  transition: all 0.2s ease !important;
+}
+
+.cl-socialButtonsBlockButton:hover {
+  background-color: #f1f5f9 !important;
+  border-color: #94a3b8 !important;
+}
+
 .cl-formFieldInput {
   color: #0f172a !important;
   background-color: #ffffff !important;
@@ -119,48 +127,66 @@ svg[aria-label="Clerk logo"],
 :root,
 [data-theme="theme_2"] {
   --theme-primary: #CCFF00;
+  --theme-primary-hover: #b8e600;
+  --theme-primary-text: #0A0F1D;
   --theme-secondary: #00E5FF;
+  --theme-secondary-hover: #00cbe3;
+  --theme-secondary-text: #0A0F1D;
   --theme-accent: #00E5FF;
   --theme-bg: #0A0F1D;
   --theme-surface: #111A2E;
-  --theme-surface-hover: #16223D;
-  --theme-border: rgba(0, 229, 255, 0.22);
+  --theme-surface-card: #16233B;
+  --theme-surface-hover: #1B2C4A;
+  --theme-border: rgba(0, 229, 255, 0.28);
   --theme-text: #F8FAFC;
   --theme-text-muted: #94A3B8;
-  --theme-glow: rgba(204, 255, 0, 0.25);
+  --theme-text-dim: #64748B;
+  --theme-glow: rgba(204, 255, 0, 0.35);
   --theme-badge-bg: rgba(204, 255, 0, 0.12);
   --theme-badge-text: #CCFF00;
-  --theme-badge-border: rgba(204, 255, 0, 0.3);
+  --theme-badge-border: rgba(204, 255, 0, 0.35);
 }
 
 [data-theme="theme_1"] {
   --theme-primary: #FF6B35;
+  --theme-primary-hover: #e85a25;
+  --theme-primary-text: #FFFFFF;
   --theme-secondary: #1A2639;
+  --theme-secondary-hover: #23334c;
+  --theme-secondary-text: #FFFFFF;
   --theme-accent: #00A896;
-  --theme-bg: #0D1524;
-  --theme-surface: #182438;
-  --theme-surface-hover: #1F2E47;
-  --theme-border: rgba(255, 107, 53, 0.25);
+  --theme-bg: #0B1321;
+  --theme-surface: #142033;
+  --theme-surface-card: #1C2A42;
+  --theme-surface-hover: #243654;
+  --theme-border: rgba(255, 107, 53, 0.32);
   --theme-text: #FFFFFF;
   --theme-text-muted: #94A3B8;
-  --theme-glow: rgba(255, 107, 53, 0.25);
-  --theme-badge-bg: rgba(255, 107, 53, 0.14);
+  --theme-text-dim: #64748B;
+  --theme-glow: rgba(255, 107, 53, 0.35);
+  --theme-badge-bg: rgba(255, 107, 53, 0.15);
   --theme-badge-text: #FF6B35;
   --theme-badge-border: rgba(255, 107, 53, 0.35);
 }
 
 [data-theme="theme_3"] {
   --theme-primary: #FF5A5F;
+  --theme-primary-hover: #e74c51;
+  --theme-primary-text: #FFFFFF;
   --theme-secondary: #E0ECDE;
+  --theme-secondary-hover: #d0dfce;
+  --theme-secondary-text: #12241A;
   --theme-accent: #2D5A27;
-  --theme-bg: #0D1A12;
-  --theme-surface: #15271D;
-  --theme-surface-hover: #1C3326;
-  --theme-border: rgba(255, 90, 95, 0.25);
+  --theme-bg: #0B1610;
+  --theme-surface: #12241A;
+  --theme-surface-card: #193123;
+  --theme-surface-hover: #213E2D;
+  --theme-border: rgba(255, 90, 95, 0.32);
   --theme-text: #FFFFFF;
   --theme-text-muted: #CBD5E1;
-  --theme-glow: rgba(255, 90, 95, 0.25);
-  --theme-badge-bg: rgba(255, 90, 95, 0.14);
+  --theme-text-dim: #94A3B8;
+  --theme-glow: rgba(255, 90, 95, 0.35);
+  --theme-badge-bg: rgba(255, 90, 95, 0.15);
   --theme-badge-text: #FF5A5F;
   --theme-badge-border: rgba(255, 90, 95, 0.35);
 }
@@ -173,20 +199,189 @@ body {
 }
 
 /* ==========================================================================
+   Full Application Dynamic Theme Skinning
+   Maps all components, modals, and elements to active theme variables
+   ========================================================================== */
+
+/* 1. Page Background & Dashboard Root */
+html[data-theme],
+html[data-theme] body,
+html[data-theme] div.min-h-screen,
+html[data-theme] div.min-h-screen.bg-slate-50 {
+  background-color: var(--theme-bg) !important;
+  color: var(--theme-text) !important;
+}
+
+/* 2. Modals & Dialog Windows (Attendance, Calendar, Workout, News, Quotes, Settings, Chat) */
+html[data-theme] div[role="dialog"],
+html[data-theme] div[role="dialog"] > div.bg-slate-50,
+html[data-theme] div[role="dialog"].bg-slate-50 {
+  background-color: var(--theme-bg) !important;
+  color: var(--theme-text) !important;
+}
+
+/* 3. Surface Containers, Cards, Modal Dialog Boxes & Headers */
+html[data-theme] .bg-white,
+html[data-theme] div[role="dialog"] .bg-white,
+html[data-theme] header.bg-white,
+html[data-theme] section.bg-white {
+  background-color: var(--theme-surface) !important;
+  color: var(--theme-text) !important;
+  border-color: var(--theme-border) !important;
+}
+
+/* 4. Sub-cards, Nested Panels, Form Input Containers, & Stat Cards */
+html[data-theme] .bg-slate-50,
+html[data-theme] .bg-slate-100,
+html[data-theme] .bg-slate-200,
+html[data-theme] div[role="dialog"] .bg-slate-50,
+html[data-theme] div[role="dialog"] .bg-slate-100 {
+  background-color: var(--theme-surface-card) !important;
+  color: var(--theme-text) !important;
+  border-color: var(--theme-border) !important;
+}
+
+/* 5. Borders & Dividers */
+html[data-theme] .border-slate-200,
+html[data-theme] .border-slate-100,
+html[data-theme] .border-slate-300,
+html[data-theme] .border-slate-700,
+html[data-theme] .divide-slate-200 > :not([hidden]) ~ :not([hidden]) {
+  border-color: var(--theme-border) !important;
+}
+
+/* 6. Typography Mappings */
+html[data-theme] .text-slate-900,
+html[data-theme] .text-slate-800,
+html[data-theme] .text-slate-950 {
+  color: var(--theme-text) !important;
+}
+html[data-theme] .text-slate-700,
+html[data-theme] .text-slate-600 {
+  color: var(--theme-text-muted) !important;
+}
+html[data-theme] .text-slate-500,
+html[data-theme] .text-slate-400 {
+  color: var(--theme-text-dim) !important;
+}
+
+/* 7. Primary Action Buttons & Check-Ins */
+html[data-theme] .bg-teal-700,
+html[data-theme] .bg-teal-800,
+html[data-theme] .bg-teal-600,
+html[data-theme] .bg-emerald-600,
+html[data-theme] .bg-emerald-700 {
+  background-color: var(--theme-primary) !important;
+  color: var(--theme-primary-text) !important;
+  box-shadow: 0 4px 14px var(--theme-glow) !important;
+}
+
+html[data-theme] .hover\:bg-teal-800:hover,
+html[data-theme] .hover\:bg-teal-700:hover,
+html[data-theme] .hover\:bg-emerald-700:hover {
+  background-color: var(--theme-primary-hover) !important;
+}
+
+/* 8. Primary Text Highlights, Brand & Icons */
+html[data-theme] .text-teal-700,
+html[data-theme] .text-teal-600,
+html[data-theme] .text-teal-800,
+html[data-theme] .text-emerald-700,
+html[data-theme] .text-emerald-600 {
+  color: var(--theme-primary) !important;
+}
+
+/* 9. Accent Tags, Focus Rings & Badges */
+html[data-theme] .bg-teal-50,
+html[data-theme] .bg-teal-100,
+html[data-theme] .bg-emerald-50,
+html[data-theme] .bg-emerald-100 {
+  background-color: var(--theme-badge-bg) !important;
+  color: var(--theme-badge-text) !important;
+  border-color: var(--theme-badge-border) !important;
+}
+
+html[data-theme] .text-teal-400,
+html[data-theme] .text-teal-300,
+html[data-theme] .text-emerald-400,
+html[data-theme] .text-emerald-300 {
+  color: var(--theme-accent) !important;
+}
+
+html[data-theme] .border-teal-600,
+html[data-theme] .border-teal-500,
+html[data-theme] .border-teal-400,
+html[data-theme] .border-emerald-500 {
+  border-color: var(--theme-primary) !important;
+}
+
+html[data-theme] .border-teal-200,
+html[data-theme] .border-teal-300,
+html[data-theme] .border-emerald-200 {
+  border-color: var(--theme-border) !important;
+}
+
+/* 10. Fixed Bottom Navigation Bar */
+html[data-theme] nav[aria-label="Primary Bottom Navigation"] {
+  background-color: var(--theme-surface) !important;
+  border-color: var(--theme-border) !important;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.4) !important;
+}
+
+html[data-theme] nav[aria-label="Primary Bottom Navigation"] button.bg-slate-100 {
+  background-color: var(--theme-surface-card) !important;
+  border: 1px solid var(--theme-border) !important;
+  color: var(--theme-text) !important;
+}
+
+html[data-theme] nav[aria-label="Primary Bottom Navigation"] button.bg-slate-100:hover {
+  background-color: var(--theme-surface-hover) !important;
+}
+
+html[data-theme] nav[aria-label="Primary Bottom Navigation"] button.bg-teal-700 {
+  background-color: var(--theme-primary) !important;
+  color: var(--theme-primary-text) !important;
+}
+
+/* 11. Form Inputs, Selects & Textareas */
+html[data-theme] input,
+html[data-theme] textarea,
+html[data-theme] select {
+  background-color: var(--theme-surface-card) !important;
+  border-color: var(--theme-border) !important;
+  color: var(--theme-text) !important;
+}
+html[data-theme] input:focus,
+html[data-theme] textarea:focus,
+html[data-theme] select:focus {
+  border-color: var(--theme-primary) !important;
+  box-shadow: 0 0 0 2px var(--theme-glow) !important;
+}
+
+/* ==========================================================================
    UI/UX Design Guidelines Utility Classes
    ========================================================================== */
 
 /* 2. Rounded Corners: 12-20px */
 .theme-radius-card {
-  border-radius: 1.25rem; /* 20px */
+  border-radius: 1.25rem !important; /* 20px */
 }
 .theme-radius-btn {
-  border-radius: 0.875rem; /* 14px */
+  border-radius: 0.875rem !important; /* 14px */
 }
 
 /* 3. Smooth Transitions: 200-300ms */
 .theme-transition {
   transition: all 250ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Micro-interactions & Smooth Transitions across interactive controls */
+button, a, input, select, textarea, div[role="dialog"], .rounded-2xl, .rounded-xl {
+  transition: background-color 250ms cubic-bezier(0.4, 0, 0.2, 1),
+              border-color 250ms cubic-bezier(0.4, 0, 0.2, 1),
+              color 250ms cubic-bezier(0.4, 0, 0.2, 1),
+              box-shadow 250ms cubic-bezier(0.4, 0, 0.2, 1),
+              transform 200ms ease;
 }
 
 /* 4. Micro-animations & Interactive States */
@@ -198,6 +393,10 @@ body {
 }
 .theme-interactive:active {
   transform: scale(0.98);
+}
+
+button:active {
+  transform: scale(0.97);
 }
 
 /* Theme Surface Cards */
@@ -212,7 +411,7 @@ body {
 /* Theme Primary Action Buttons */
 .theme-btn-primary {
   background-color: var(--theme-primary);
-  color: #0A0F1D;
+  color: var(--theme-primary-text);
   font-weight: 800;
   box-shadow: 0 4px 14px var(--theme-glow);
   transition: all 200ms ease;

@@ -84,7 +84,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="manifest" href="/manifest.json" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         <Script id="theme-init" strategy="beforeInteractive">
-          {`try { var t = localStorage.getItem('beyondlimits_app_theme') || 'theme_2'; document.documentElement.setAttribute('data-theme', t); } catch (e) {}`}
+          {`try { var t = localStorage.getItem('beyondlimits_app_theme') || 'theme_2'; document.documentElement.setAttribute('data-theme', t); if (document.body) { document.body.setAttribute('data-theme', t); } } catch (e) {}`}
         </Script>
         <Script src="https://js.puter.com/v2/" strategy="beforeInteractive" />
       </head>

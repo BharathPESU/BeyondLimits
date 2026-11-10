@@ -617,35 +617,51 @@ export default function UserSettingsModal({
                 <div
                   key={t.id}
                   onClick={() => setTheme(t.id)}
-                  className={`p-3.5 rounded-2xl border transition-all cursor-pointer ${
+                  style={{
+                    borderColor: isSelected ? t.colors.primary : undefined,
+                    boxShadow: isSelected ? `0 0 16px ${t.colors.glow}` : undefined,
+                  }}
+                  className={`p-4 rounded-2xl border transition-all duration-200 cursor-pointer active:scale-[0.99] ${
                     isSelected
-                      ? 'bg-slate-900 text-white border-teal-400 ring-2 ring-teal-400/30 shadow-md'
-                      : 'bg-slate-50 hover:bg-slate-100/90 text-slate-800 border-slate-200'
+                      ? 'bg-slate-950/90 text-white ring-2 shadow-lg'
+                      : 'bg-slate-900/40 hover:bg-slate-900/70 text-slate-200 border-slate-700/60'
                   }`}
                 >
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-black tracking-tight">
+                      <span className="text-xs font-black tracking-tight text-white">
                         {t.name}
                       </span>
                       {t.id === 'theme_2' && (
-                        <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-teal-500/20 text-teal-300 border border-teal-400/40">
+                        <span
+                          style={{
+                            backgroundColor: 'rgba(204, 255, 0, 0.15)',
+                            color: '#CCFF00',
+                            borderColor: 'rgba(204, 255, 0, 0.4)',
+                          }}
+                          className="px-2 py-0.5 rounded-full text-[9px] font-bold border"
+                        >
                           Default
                         </span>
                       )}
                     </div>
                     <div
-                      className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors ${
-                        isSelected
-                          ? 'border-teal-400 bg-teal-400 text-slate-950'
-                          : 'border-slate-400 bg-transparent'
-                      }`}
+                      style={{
+                        borderColor: isSelected ? t.colors.primary : '#64748B',
+                        backgroundColor: isSelected ? t.colors.primary : 'transparent',
+                      }}
+                      className="w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors"
                     >
-                      {isSelected && <div className="w-2 h-2 rounded-full bg-slate-950" />}
+                      {isSelected && (
+                        <div
+                          style={{ backgroundColor: t.colors.primaryText }}
+                          className="w-2 h-2 rounded-full"
+                        />
+                      )}
                     </div>
                   </div>
 
-                  <p className={`text-[11px] mb-3 ${isSelected ? 'text-slate-300' : 'text-slate-500'}`}>
+                  <p className="text-[11px] mb-3 text-slate-300">
                     {t.tagline}
                   </p>
 
@@ -654,19 +670,17 @@ export default function UserSettingsModal({
                     {t.swatches.map((swatch, sIdx) => (
                       <div
                         key={sIdx}
-                        className={`flex items-center gap-2 p-1.5 rounded-xl border ${
-                          isSelected ? 'bg-slate-950/80 border-slate-800' : 'bg-white border-slate-200'
-                        }`}
+                        className="flex items-center gap-2 p-1.5 rounded-xl border border-slate-700/60 bg-slate-900/80 shadow-xs"
                       >
                         <div
                           className="w-5 h-5 rounded-lg shrink-0 border border-white/20 shadow-xs"
                           style={{ backgroundColor: swatch.hex }}
                         />
                         <div className="min-w-0">
-                          <div className={`text-[10px] font-mono font-bold leading-tight ${isSelected ? 'text-white' : 'text-slate-900'}`}>
+                          <div className="text-[10px] font-mono font-bold leading-tight text-white">
                             {swatch.hex}
                           </div>
-                          <div className={`text-[9px] truncate ${isSelected ? 'text-slate-400' : 'text-slate-500'}`}>
+                          <div className="text-[9px] truncate text-slate-400">
                             {swatch.role}
                           </div>
                         </div>

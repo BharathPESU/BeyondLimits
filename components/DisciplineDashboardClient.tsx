@@ -60,6 +60,7 @@ import UserSettingsModal from './UserSettingsModal';
 import PWAInstallButton from './PWAInstallButton';
 import VoiceFireCanvas, { VoiceAudioTelemetry } from './VoiceFireCanvas';
 import JarvisArcReactorCanvas from './JarvisArcReactorCanvas';
+import { useAppTheme } from './ThemeProvider';
 
 const MAIN_VOICE_QUOTES = [
   '/assets/aistudio/main_voice/main_voice_1.mp3', // Quote 1: Initial welcome on app open (only once)
@@ -78,6 +79,7 @@ export default function DisciplineDashboardClient({
   initialData,
 }: DisciplineDashboardClientProps) {
   const { user } = useUser();
+  const { theme } = useAppTheme();
   const [profileName, setProfileName] = useState<string>('');
 
   useEffect(() => {
@@ -1429,20 +1431,21 @@ export default function DisciplineDashboardClient({
                   data={weeklyChartData}
                   margin={{ top: 8, right: 8, left: -24, bottom: 0 }}
                 >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <CartesianGrid strokeDasharray="3 3" stroke={theme?.colors?.border || "rgba(255,255,255,0.15)"} />
                   <XAxis
                     dataKey="name"
-                    tick={{ fontSize: 12, fill: '#475569' }}
+                    tick={{ fontSize: 12, fill: theme?.colors?.textMuted || '#94a3b8' }}
                   />
                   <YAxis
                     allowDecimals={false}
-                    tick={{ fontSize: 12, fill: '#475569' }}
+                    tick={{ fontSize: 12, fill: theme?.colors?.textMuted || '#94a3b8' }}
                   />
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: '#ffffff',
-                      borderColor: '#e2e8f0',
-                      borderRadius: '12px',
+                      backgroundColor: theme?.colors?.surface || '#111A2E',
+                      borderColor: theme?.colors?.border || '#00E5FF',
+                      borderRadius: '16px',
+                      color: theme?.colors?.text || '#ffffff',
                       fontSize: '12px',
                     }}
                   />
@@ -1450,14 +1453,14 @@ export default function DisciplineDashboardClient({
                   <Bar
                     dataKey="clean"
                     name="Clean (Controlled)"
-                    fill="#0d9488"
-                    radius={[4, 4, 0, 0]}
+                    fill={theme?.colors?.primary || "#CCFF00"}
+                    radius={[6, 6, 0, 0]}
                   />
                   <Bar
                     dataKey="relapse"
                     name="Relapse (Masturbated)"
                     fill="#e11d48"
-                    radius={[4, 4, 0, 0]}
+                    radius={[6, 6, 0, 0]}
                   />
                 </BarChart>
               ) : (
@@ -1465,20 +1468,21 @@ export default function DisciplineDashboardClient({
                   data={monthlyTrendData}
                   margin={{ top: 8, right: 8, left: -24, bottom: 0 }}
                 >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <CartesianGrid strokeDasharray="3 3" stroke={theme?.colors?.border || "rgba(255,255,255,0.15)"} />
                   <XAxis
                     dataKey="weekLabel"
-                    tick={{ fontSize: 12, fill: '#475569' }}
+                    tick={{ fontSize: 12, fill: theme?.colors?.textMuted || '#94a3b8' }}
                   />
                   <YAxis
                     allowDecimals={false}
-                    tick={{ fontSize: 12, fill: '#475569' }}
+                    tick={{ fontSize: 12, fill: theme?.colors?.textMuted || '#94a3b8' }}
                   />
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: '#ffffff',
-                      borderColor: '#e2e8f0',
-                      borderRadius: '12px',
+                      backgroundColor: theme?.colors?.surface || '#111A2E',
+                      borderColor: theme?.colors?.border || '#00E5FF',
+                      borderRadius: '16px',
+                      color: theme?.colors?.text || '#ffffff',
                       fontSize: '12px',
                     }}
                   />
@@ -1486,14 +1490,14 @@ export default function DisciplineDashboardClient({
                   <Bar
                     dataKey="clean"
                     name="Clean Days"
-                    fill="#0d9488"
-                    radius={[4, 4, 0, 0]}
+                    fill={theme?.colors?.primary || "#CCFF00"}
+                    radius={[6, 6, 0, 0]}
                   />
                   <Bar
                     dataKey="relapse"
                     name="Relapses"
                     fill="#e11d48"
-                    radius={[4, 4, 0, 0]}
+                    radius={[6, 6, 0, 0]}
                   />
                 </BarChart>
               )}
