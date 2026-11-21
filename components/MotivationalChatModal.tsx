@@ -357,10 +357,10 @@ export default function MotivationalChatModal({
       aria-modal="true"
       aria-labelledby="chat-modal-title"
     >
-      {/* Light Header with Safe Area, Left Back Arrow & Controls */}
-      <div className="bg-white border-b border-slate-200 px-4 sm:px-6 pt-[max(env(safe-area-inset-top),16px)] pb-3 shrink-0">
+      {/* Dark Cyber Header with Safe Area, Left Back Arrow & Controls (Ref Image 4) */}
+      <div className="bg-slate-950/95 border-b border-slate-800/80 px-4 sm:px-6 pt-[max(env(safe-area-inset-top),16px)] pb-3 shrink-0">
         <div className="max-w-4xl w-full mx-auto flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             <button
               type="button"
               onClick={() => {
@@ -369,33 +369,29 @@ export default function MotivationalChatModal({
                 onClose();
               }}
               aria-label="Back to dashboard"
-              className="min-h-[38px] min-w-[38px] -ml-2 inline-flex items-center justify-center rounded-xl text-slate-700 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer"
+              className="min-h-[42px] min-w-[42px] -ml-2 inline-flex items-center justify-center rounded-2xl bg-slate-900 border border-teal-500/40 text-white hover:bg-slate-800 transition-colors cursor-pointer shadow-sm"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
-            <div
-              className={`p-2 rounded-xl transition-colors ${
-                isAgentMode ? 'bg-emerald-50 text-emerald-700' : 'bg-teal-50 text-teal-700'
-              }`}
-            >
-              {isAgentMode ? <Bot className="w-5 h-5" /> : <MessageSquare className="w-5 h-5" />}
+            <div className="p-2.5 rounded-2xl bg-rose-500/15 border border-rose-500/40 text-rose-400 shadow-sm shadow-rose-500/20">
+              <MessageSquare className="w-5 h-5" />
             </div>
             <div>
               <h2
                 id="chat-modal-title"
-                className="text-sm sm:text-base font-bold text-slate-900 flex items-center gap-2"
+                className="text-sm sm:text-base font-black text-white flex items-center gap-2"
               >
                 <span>{isAgentMode ? 'Autonomous Discipline Agent' : 'Discipline & Motivation Coach'}</span>
                 {isAgentMode && (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-500/20 text-teal-400 border border-teal-500/40">
                     DB Connected
                   </span>
                 )}
               </h2>
-              <p className="text-[11px] text-slate-500">
+              <p className="text-[11px] text-slate-400">
                 {isAgentMode
-                  ? 'Accesses your personal database (attendance, streaks, workouts, achievements) with read-only safety'
-                  : 'Daily mindset, brotherly tough love, and emotional accountability'}
+                  ? 'Accesses your personal database with read-only safety'
+                  : 'Daily mindset, stronger thoughts, and emotional accountability.'}
               </p>
             </div>
           </div>
@@ -515,19 +511,15 @@ export default function MotivationalChatModal({
       {/* Messages Feed */}
       <div ref={chatScrollRef} className="flex-1 overflow-y-auto p-4 sm:p-6">
         <div className="max-w-4xl w-full mx-auto space-y-4">
-          {/* Quick Starter Chips */}
-          <div className="flex flex-wrap gap-2 pb-1">
+          {/* Quick Starter Chips (Ref Image 4) */}
+          <div className="flex flex-col sm:flex-row flex-wrap gap-2 pb-1">
             {(isAgentMode ? AGENT_PROMPTS : COACH_PROMPTS).map((q) => (
               <button
                 key={q}
                 type="button"
                 disabled={isSending}
                 onClick={() => void sendMessageToAgent(q, false)}
-                className={`px-3 py-1.5 rounded-xl border text-xs font-medium transition-colors cursor-pointer text-left ${
-                  isAgentMode
-                    ? 'bg-emerald-50/60 hover:bg-emerald-100/70 border-emerald-200 text-emerald-900'
-                    : 'bg-white hover:bg-slate-100 border-slate-200 text-slate-700'
-                }`}
+                className="w-full sm:w-auto px-4 py-2.5 rounded-full border border-teal-500/40 bg-slate-900/80 hover:bg-slate-800 text-white text-xs font-semibold transition-all cursor-pointer text-center shadow-xs"
               >
                 {q}
               </button>
@@ -544,8 +536,8 @@ export default function MotivationalChatModal({
               <div
                 className={`max-w-[88%] sm:max-w-[78%] rounded-2xl p-4 text-xs sm:text-sm leading-relaxed ${
                   msg.role === 'user'
-                    ? 'bg-teal-700 text-white rounded-br-xs'
-                    : 'bg-white border border-slate-200 text-slate-900 rounded-bl-xs shadow-xs'
+                    ? 'bg-slate-900 border border-teal-500/40 text-white rounded-br-xs shadow-sm'
+                    : 'cyber-card text-white rounded-bl-xs shadow-md'
                 }`}
               >
                 <p>{msg.content}</p>
@@ -632,20 +624,18 @@ export default function MotivationalChatModal({
         </div>
       )}
 
-      {/* Voice Auto-Send & Text Input Controls */}
-      <div className="p-4 bg-white border-t border-slate-200 shrink-0">
-        <div className="max-w-4xl w-full mx-auto space-y-2.5">
+      {/* Voice Auto-Send & Text Input Controls (Ref Image 4) */}
+      <div className="p-4 bg-slate-950/95 border-t border-slate-800/80 shrink-0">
+        <div className="max-w-4xl w-full mx-auto space-y-3">
           {/* Primary Prominent Voice Auto-Send Button */}
           <button
             type="button"
             disabled={isSending}
             onClick={() => void startVoicePermissionAndAutoSend()}
-            className={`w-full min-h-[46px] rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-colors cursor-pointer ${
+            className={`w-full min-h-[48px] rounded-full font-black text-xs sm:text-sm flex items-center justify-center gap-2 transition-all cursor-pointer shadow-lg ${
               isListening
                 ? 'bg-rose-600 hover:bg-rose-700 text-white animate-pulse'
-                : isAgentMode
-                ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm'
-                : 'bg-teal-700 hover:bg-teal-800 text-white'
+                : 'cyber-btn-primary'
             }`}
           >
             {isListening ? (
@@ -679,15 +669,15 @@ export default function MotivationalChatModal({
               onChange={(e) => setInputText(e.target.value)}
               placeholder={
                 isAgentMode
-                  ? 'Ask about your day (e.g. "How was my day on Nov 5?"), workouts, triggers...'
-                  : 'Or type any question for your motivational AI coach...'
+                  ? 'Ask about your day, workouts, triggers...'
+                  : 'Or type any question for your motivation...'
               }
-              className="flex-1 min-h-[44px] px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-teal-600"
+              className="flex-1 min-h-[46px] px-5 py-2.5 rounded-full bg-slate-900 border border-teal-500/40 text-xs sm:text-sm text-white placeholder:text-slate-400 focus:outline-none focus:border-teal-400 shadow-inner"
             />
             <button
               type="submit"
               disabled={!inputText.trim() || isSending}
-              className="min-h-[44px] px-4 rounded-xl bg-slate-900 hover:bg-slate-800 disabled:opacity-40 text-white text-xs font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
+              className="cyber-btn-primary min-h-[46px] px-6 rounded-full text-xs font-black inline-flex items-center gap-1.5 cursor-pointer shrink-0 disabled:opacity-40"
             >
               <Send className="w-3.5 h-3.5" />
               <span>Send</span>

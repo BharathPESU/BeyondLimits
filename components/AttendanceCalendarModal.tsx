@@ -25,6 +25,9 @@ import {
   TrendingUp,
   Award,
   Sparkles,
+  Lightbulb,
+  Zap,
+  BarChart3,
 } from 'lucide-react';
 import { AttendanceRecord, FriendId } from '@/lib/types';
 
@@ -144,48 +147,48 @@ export default function AttendanceCalendarModal({
       aria-modal="true"
     >
       {/* Full-Screen Sticky Header with Safe Area & Left Back Arrow */}
-      <div className="bg-white border-b border-slate-200 px-4 sm:px-6 pt-[max(env(safe-area-inset-top),16px)] pb-3.5 shrink-0">
+      <div className="bg-slate-950/95 border-b border-slate-800/80 px-4 sm:px-6 pt-[max(env(safe-area-inset-top),16px)] pb-3.5 shrink-0">
         <div className="max-w-4xl w-full mx-auto flex items-center gap-3">
           <button
             type="button"
             onClick={onClose}
-            className="min-h-[40px] min-w-[40px] -ml-2 flex items-center justify-center rounded-xl text-slate-700 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer"
+            className="min-h-[42px] min-w-[42px] -ml-2 flex items-center justify-center rounded-2xl bg-slate-900 border border-teal-500/40 text-white hover:bg-slate-800 transition-colors cursor-pointer shadow-sm"
             aria-label="Back to dashboard"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
-            <h2 className="text-base sm:text-lg font-bold text-slate-900 leading-tight">
+            <h2 className="text-base sm:text-lg font-bold text-white leading-tight">
               Self-Control Attendance Calendar
             </h2>
-            <p className="text-[11px] sm:text-xs text-slate-500">
-              Tracking monthly habit consistency &amp; impulse control for {displayName}
+            <p className="text-[11px] sm:text-xs text-slate-400">
+              Track your monthly habit consistency &amp; impulse control for {displayName}
             </p>
           </div>
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6">
-        <div className="max-w-4xl w-full mx-auto bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 space-y-5">
-          {/* Month Navigation & Quick Actions */}
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-950 text-white">
+        <div className="max-w-4xl w-full mx-auto cyber-card p-4 sm:p-6 space-y-5">
+          {/* Month Navigation & Quick Actions (Ref Image 3) */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
                 aria-label="Previous Month"
-                className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-xl border border-slate-200 hover:bg-slate-100 text-slate-700 cursor-pointer"
+                className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-xl bg-slate-900 border border-slate-800 hover:border-teal-500/40 text-white cursor-pointer"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
-              <span className="text-sm font-bold text-slate-900 min-w-[140px] text-center">
+              <span className="text-sm font-black text-white min-w-[140px] text-center">
                 {format(currentMonth, 'MMMM yyyy')}
               </span>
               <button
                 type="button"
                 onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
                 aria-label="Next Month"
-                className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-xl border border-slate-200 hover:bg-slate-100 text-slate-700 cursor-pointer"
+                className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-xl bg-slate-900 border border-slate-800 hover:border-teal-500/40 text-white cursor-pointer"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>
@@ -196,141 +199,95 @@ export default function AttendanceCalendarModal({
                   setCurrentMonth(now);
                   setSelectedDayStr(format(now, 'yyyy-MM-dd'));
                 }}
-                className="min-h-[40px] px-3.5 text-xs font-semibold text-teal-700 bg-teal-50 hover:bg-teal-100 rounded-xl transition-colors cursor-pointer"
+                className="cyber-btn-primary min-h-[40px] px-4 text-xs font-black rounded-xl cursor-pointer"
               >
                 Today
               </button>
             </div>
 
-            <div className="flex items-center gap-2 text-xs font-semibold text-slate-600">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200">
-                <span className="w-2 h-2 rounded-full bg-emerald-600" />
+            <div className="flex items-center gap-2 text-xs font-semibold">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-950/60 text-rose-300 border border-rose-600/40">
+                <span className="w-2 h-2 rounded-full bg-rose-500" />
                 Clean (Controlled)
               </span>
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-rose-50 text-rose-800 border border-rose-200">
-                <span className="w-2 h-2 rounded-full bg-rose-600" />
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-lime-950/60 text-lime-300 border border-lime-400/40">
+                <span className="w-2 h-2 rounded-full bg-lime-400" />
                 Relapsed
               </span>
             </div>
           </div>
 
-          {/* Monthly Self-Control Analytics Strip */}
+          {/* Monthly Self-Control Analytics 2x2 Grid (Ref Image 3) */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
-              <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-                Monthly Control Rate
+            <div className="p-4 rounded-2xl bg-slate-900/80 border border-teal-500/30 relative overflow-hidden">
+              <div className="flex items-center gap-1.5 text-[11px] font-bold text-teal-400 uppercase tracking-wider">
+                <ShieldCheck className="w-4 h-4 text-teal-400" />
+                <span>Monthly Control Rate</span>
               </div>
-              <div
-                className={`text-xl font-black font-mono tabular-nums mt-1 ${
-                  monthControlRate >= 80
-                    ? 'text-teal-700'
-                    : monthControlRate >= 60
-                    ? 'text-amber-700'
-                    : 'text-rose-700'
-                }`}
-              >
+              <div className="text-2xl sm:text-3xl font-black font-mono tabular-nums text-teal-400 mt-1">
                 {monthControlRate}%
               </div>
-              <div className="text-[11px] text-slate-500 mt-0.5">
+              <div className="text-[11px] text-slate-400 mt-0.5">
                 {totalMarkedMonth > 0
                   ? `${cleanMonthCount} clean of ${totalMarkedMonth} logged`
                   : 'No logs this month'}
               </div>
             </div>
 
-            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
-              <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-                Clean Days
+            <div className="p-4 rounded-2xl bg-slate-900/80 border border-amber-500/30 relative overflow-hidden">
+              <div className="flex items-center gap-1.5 text-[11px] font-bold text-amber-400 uppercase tracking-wider">
+                <CalendarIcon className="w-4 h-4 text-amber-400" />
+                <span>Clean Days</span>
               </div>
-              <div className="text-xl font-black font-mono tabular-nums text-emerald-700 mt-1">
-                {cleanMonthCount} <span className="text-xs font-normal">Days ✓</span>
+              <div className="text-2xl sm:text-3xl font-black font-mono tabular-nums text-amber-400 mt-1">
+                {cleanMonthCount} <span className="text-xs font-bold">Days ✓</span>
               </div>
-              <div className="text-[11px] text-slate-500 mt-0.5">
+              <div className="text-[11px] text-slate-400 mt-0.5">
                 Urges overridden
               </div>
             </div>
 
-            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
-              <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-                Monthly Relapses
+            <div className="p-4 rounded-2xl bg-slate-900/80 border border-rose-500/30 relative overflow-hidden">
+              <div className="flex items-center gap-1.5 text-[11px] font-bold text-rose-400 uppercase tracking-wider">
+                <BarChart3 className="w-4 h-4 text-rose-400" />
+                <span>Monthly Relapses</span>
               </div>
-              <div
-                className={`text-xl font-black font-mono tabular-nums mt-1 ${
-                  relapseMonthCount === 0 ? 'text-slate-600' : 'text-rose-700'
-                }`}
-              >
-                {relapseMonthCount} <span className="text-xs font-normal">Times ✗</span>
+              <div className="text-2xl sm:text-3xl font-black font-mono tabular-nums text-rose-400 mt-1">
+                {relapseMonthCount} <span className="text-xs font-bold">Times ↗</span>
               </div>
-              <div className="text-[11px] text-slate-500 mt-0.5">
+              <div className="text-[11px] text-slate-400 mt-0.5">
                 Relapse rate: {monthRelapseRate}%
               </div>
             </div>
 
-            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
-              <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-                Active Streak
+            <div className="p-4 rounded-2xl bg-slate-900/80 border border-emerald-500/30 relative overflow-hidden">
+              <div className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-400 uppercase tracking-wider">
+                <Zap className="w-4 h-4 text-emerald-400" />
+                <span>Active Streak</span>
               </div>
-              <div className="text-xl font-black font-mono tabular-nums text-teal-800 mt-1">
-                {currentStreak} <span className="text-xs font-normal">Days</span>
+              <div className="text-2xl sm:text-3xl font-black font-mono tabular-nums text-emerald-400 mt-1">
+                {currentStreak} <span className="text-xs font-bold">Days</span>
               </div>
-              <div className="text-[11px] text-slate-500 mt-0.5">
+              <div className="text-[11px] text-slate-400 mt-0.5">
                 Consecutive clean
               </div>
             </div>
           </div>
 
-          {/* Self-Control Progress Evaluation Banner */}
-          <div
-            className={`p-3.5 rounded-xl border text-xs leading-relaxed flex items-start gap-2.5 ${
-              totalMarkedMonth === 0
-                ? 'bg-slate-50 border-slate-200 text-slate-700'
-                : relapseMonthCount === 0 && cleanMonthCount > 0
-                ? 'bg-emerald-50/90 border-emerald-300 text-emerald-950 font-medium'
-                : monthControlRate >= 85
-                ? 'bg-teal-50/90 border-teal-300 text-teal-950 font-medium'
-                : monthControlRate >= 60
-                ? 'bg-amber-50/90 border-amber-300 text-amber-950 font-medium'
-                : 'bg-rose-50/90 border-rose-300 text-rose-950 font-medium'
-            }`}
-          >
-            {totalMarkedMonth === 0 ? (
-              <Clock className="w-4 h-4 text-slate-500 shrink-0 mt-0.5" />
-            ) : relapseMonthCount === 0 && cleanMonthCount > 0 ? (
-              <Award className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
-            ) : monthControlRate >= 85 ? (
-              <Sparkles className="w-4 h-4 text-teal-700 shrink-0 mt-0.5" />
-            ) : (
-              <AlertTriangle className="w-4 h-4 text-rose-700 shrink-0 mt-0.5" />
-            )}
-
+          {/* Self-Control Progress Evaluation Banner (Ref Image 3) */}
+          <div className="p-4 rounded-2xl border border-teal-500/40 bg-teal-950/20 text-xs leading-relaxed flex items-start gap-3 shadow-sm">
+            <Lightbulb className="w-5 h-5 text-teal-400 shrink-0 mt-0.5" />
             <div>
-              {totalMarkedMonth === 0 ? (
-                <span>
-                  Log your daily attendance to track your monthly self-control rate and watch your willpower grow.
-                </span>
-              ) : relapseMonthCount === 0 && cleanMonthCount > 0 ? (
-                <span>
-                  <strong>Flawless Self-Control!</strong> You have 0 relapses this month ({cleanMonthCount} days clean). You are exercising complete command over your impulses.
-                </span>
-              ) : monthControlRate >= 85 ? (
-                <span>
-                  <strong>Strong Habit Control:</strong> You maintained self-discipline on {cleanMonthCount} out of {totalMarkedMonth} days ({monthControlRate}% clean rate). Keep eliminating late-night triggers.
-                </span>
-              ) : monthControlRate >= 60 ? (
-                <span>
-                  <strong>Urge Warning:</strong> You slipped {relapseMonthCount} times this month ({monthRelapseRate}% relapse rate). Review your logged reasons below and alter your evening routine to stop repeated slips.
-                </span>
-              ) : (
-                <span>
-                  <strong>Action Required:</strong> Your masturbation rate is {monthRelapseRate}% ({relapseMonthCount} relapses in {totalMarkedMonth} days). See this reality clearly and change your patterns immediately — keep your phone outside your bed area and reset now.
-                </span>
-              )}
+              <strong className="text-teal-300 font-bold">Strong Habit Control:</strong>{' '}
+              <span className="text-slate-200">
+                You maintained self-discipline on {cleanMonthCount} out of {totalMarkedMonth} days ({monthControlRate}% clean rate). Keep eliminating late-night triggers.
+              </span>
             </div>
           </div>
 
-          {/* Calendar Grid */}
-          <div className="border border-slate-200 rounded-xl overflow-hidden">
-            <div className="grid grid-cols-7 bg-slate-50 border-b border-slate-200 text-center text-[11px] font-semibold text-slate-600 py-2">
+          {/* Calendar Grid (Ref Image 3) */}
+          <div className="border border-slate-800/90 rounded-2xl overflow-hidden bg-slate-900/50 shadow-md">
+            <div className="grid grid-cols-7 bg-slate-900/90 border-b border-slate-800 text-center text-[11px] font-bold text-slate-400 py-2.5">
               <div>Mon</div>
               <div>Tue</div>
               <div>Wed</div>
@@ -340,7 +297,7 @@ export default function AttendanceCalendarModal({
               <div>Sun</div>
             </div>
 
-            <div className="grid grid-cols-7 divide-x divide-y divide-slate-200">
+            <div className="grid grid-cols-7 divide-x divide-y divide-slate-800/80">
               {calendarDays.map((dayObj) => {
                 const dateStr = format(dayObj, 'yyyy-MM-dd');
                 const inMonth = isSameMonth(dayObj, currentMonth);
@@ -352,21 +309,21 @@ export default function AttendanceCalendarModal({
                     key={dateStr}
                     type="button"
                     onClick={() => setSelectedDayStr(dateStr)}
-                    className={`min-h-[70px] sm:min-h-[80px] p-2 flex flex-col justify-between text-left transition-colors cursor-pointer ${
-                      !inMonth ? 'bg-slate-50/50 text-slate-400' : 'bg-white'
+                    className={`min-h-[72px] sm:min-h-[82px] p-2 flex flex-col justify-between text-left transition-colors cursor-pointer ${
+                      !inMonth ? 'bg-slate-950/40 text-slate-600' : 'bg-slate-950/90'
                     } ${
                       isSelected
-                        ? 'ring-2 ring-inset ring-teal-600 bg-teal-50/30'
-                        : 'hover:bg-slate-50'
+                        ? 'ring-2 ring-inset ring-teal-500 bg-teal-500/15'
+                        : 'hover:bg-slate-900/80'
                     }`}
                   >
                     <span
-                      className={`text-xs font-mono tabular-nums font-semibold ${
+                      className={`text-xs font-mono tabular-nums font-bold ${
                         isSelected
-                          ? 'text-teal-800'
+                          ? 'text-teal-400'
                           : inMonth
-                          ? 'text-slate-900'
-                          : 'text-slate-400'
+                          ? 'text-white'
+                          : 'text-slate-600'
                       }`}
                     >
                       {format(dayObj, 'd')}
@@ -375,18 +332,18 @@ export default function AttendanceCalendarModal({
                     {/* Single User Daily Status Badge */}
                     <div className="w-full">
                       {!rec ? (
-                        <div className="text-[10px] text-slate-400 font-mono text-center py-1">
+                        <div className="text-[10px] text-slate-600 font-mono text-center py-1">
                           —
                         </div>
                       ) : rec.relapsed ? (
-                        <div className="text-[10px] font-bold text-rose-800 bg-rose-100/90 border border-rose-200 rounded px-1.5 py-0.5 text-center truncate flex items-center justify-center gap-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-rose-600 shrink-0" />
+                        <div className="text-[10px] font-bold text-rose-400 bg-rose-500/20 border border-rose-500/50 rounded-full px-2 py-0.5 text-center truncate flex items-center justify-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
                           <span>Relapse</span>
                         </div>
                       ) : (
-                        <div className="text-[10px] font-bold text-emerald-800 bg-emerald-100/90 border border-emerald-200 rounded px-1.5 py-0.5 text-center truncate flex items-center justify-center gap-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 shrink-0" />
-                          <span>Clean ✓</span>
+                        <div className="text-[10px] font-bold text-lime-400 bg-lime-400/20 border border-lime-400/50 rounded-full px-2 py-0.5 text-center truncate flex items-center justify-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-lime-400 shrink-0" />
+                          <span>Clean</span>
                         </div>
                       )}
                     </div>

@@ -36,6 +36,7 @@ import {
   Bot,
   Mic,
   HeartHandshake,
+  Activity,
 } from 'lucide-react';
 import { getRoundRobinGeminiKeys, getJarvisVoiceSettings } from '@/lib/gemini-keys';
 import { SignInButton, SignUpButton, Show, UserButton, useUser } from '@clerk/nextjs';
@@ -1058,13 +1059,13 @@ export default function DisciplineDashboardClient({
   const motivation = dashboard.dailyMotivation;
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900 pb-24">
+    <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900 pb-28 sm:pb-32">
       {/* Main Focused Content: ONLY Motivation & Progress Graph */}
       <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 pt-4 space-y-6">
         {/* Top Header / BeyondLimits Brand Logo Bar */}
-        <header className="flex items-center justify-between pb-2 pt-1 border-b border-slate-200">
+        <header className="flex items-center justify-between pb-3 pt-1 border-b border-slate-200">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl overflow-hidden bg-black p-1 shadow-md border border-slate-800 shrink-0">
+            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl overflow-hidden bg-slate-950 p-1.5 shadow-lg border border-teal-500/40 shrink-0">
               <Image
                 src="/logo.png"
                 alt="BeyondLimits Logo"
@@ -1079,8 +1080,9 @@ export default function DisciplineDashboardClient({
                 <span className="text-lg sm:text-xl font-black tracking-tight text-slate-900">
                   Beyond<span className="text-teal-700">Limits</span>
                 </span>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-50 text-teal-700 border border-teal-200">
-                  Discipline &amp; Fitness
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-950/60 text-amber-400 border border-amber-600/50 flex items-center gap-1">
+                  <Dumbbell className="w-3 h-3 text-amber-400" />
+                  <span>Discipline &amp; Fitness</span>
                 </span>
               </div>
               <p className="text-xs text-slate-500 hidden sm:block">
@@ -1137,7 +1139,14 @@ export default function DisciplineDashboardClient({
           </div>
         </header>
         {/* 1. DAILY MOTIVATION + THREE.JS JARVIS ARC REACTOR STAGE */}
-        <section className="bg-slate-900 text-white rounded-2xl p-5 sm:p-6 border border-slate-800 space-y-5">
+        <section className="cyber-card text-white p-5 sm:p-6 space-y-4">
+          <div className="flex items-center justify-center">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-teal-500/40 bg-teal-500/10 text-teal-400 text-xs font-mono font-bold tracking-wider">
+              <span className="w-2 h-2 rounded-full bg-teal-400 animate-pulse" />
+              <span>JARVIS NK-VI // ONLINE</span>
+            </div>
+          </div>
+
           {/* Three.js Iron Man JARVIS Arc Reactor Stage */}
           <JarvisArcReactorCanvas
             telemetryRef={telemetryRef}
@@ -1145,14 +1154,15 @@ export default function DisciplineDashboardClient({
             onReplayVoice={handleJarvisClick}
           />
 
+          <div className="text-center text-[11px] font-mono font-bold tracking-wider text-teal-400 uppercase">
+            CLICK REACTOR TO DISCHARGE ENERGY
+            <span className="block text-amber-500 font-bold text-[10px] mt-0.5">▶ DRAG TO TILT 3D</span>
+          </div>
+
           {/* Voice Playback & Audio Controls */}
-          <div className="flex flex-wrap items-center justify-between gap-2.5 pt-2 border-t border-slate-800/80">
+          <div className="flex flex-wrap items-center justify-between gap-2.5 pt-3 border-t border-slate-800/80">
             <div className="flex items-center gap-2">
-              <span
-                className={`w-2.5 h-2.5 rounded-full ${
-                  isSpeaking ? 'bg-amber-400 animate-pulse' : 'bg-teal-500'
-                }`}
-              />
+              <Activity className="w-4 h-4 text-teal-400" />
               <span className="text-xs font-bold uppercase tracking-wider text-slate-300">
                 JARVIS Discipline Voice
               </span>
@@ -1162,7 +1172,7 @@ export default function DisciplineDashboardClient({
               <button
                 type="button"
                 onClick={handleJarvisClick}
-                className="min-h-[40px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-amber-500 text-slate-950 hover:bg-amber-400 rounded-xl transition-colors cursor-pointer"
+                className="cyber-btn-primary min-h-[40px] inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-2xl cursor-pointer"
               >
                 <Volume2 className="w-4 h-4" />
                 <span>{isSpeaking ? 'Speaking...' : 'Play Voice'}</span>
@@ -1173,7 +1183,7 @@ export default function DisciplineDashboardClient({
                   type="button"
                   onClick={stopVoice}
                   aria-label="Stop Voice"
-                  className="min-h-[40px] min-w-[40px] inline-flex items-center justify-center bg-slate-800 hover:bg-slate-700 text-rose-300 rounded-xl transition-colors cursor-pointer"
+                  className="min-h-[40px] min-w-[40px] inline-flex items-center justify-center bg-slate-900 hover:bg-slate-800 text-rose-300 border border-slate-800 rounded-xl transition-colors cursor-pointer"
                 >
                   <Square className="w-4 h-4" />
                 </button>
@@ -1184,7 +1194,7 @@ export default function DisciplineDashboardClient({
                 disabled={loadingMotivation}
                 onClick={handleRefreshMotivation}
                 title="Refresh Voice"
-                className="min-h-[40px] min-w-[40px] inline-flex items-center justify-center bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl transition-colors disabled:opacity-50 cursor-pointer"
+                className="min-h-[40px] min-w-[40px] inline-flex items-center justify-center bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-800 rounded-xl transition-colors disabled:opacity-50 cursor-pointer"
               >
                 <RefreshCw
                   className={`w-4 h-4 ${
@@ -1204,8 +1214,8 @@ export default function DisciplineDashboardClient({
                 }}
                 className={`min-h-[40px] inline-flex items-center gap-2 px-3 py-1.5 text-xs font-bold rounded-xl transition-all cursor-pointer select-none ${
                   isAgentMode
-                    ? 'bg-emerald-500 text-slate-950 hover:bg-emerald-400 ring-2 ring-emerald-400/50 shadow-lg shadow-emerald-500/20'
-                    : 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700'
+                    ? 'cyber-pill-active'
+                    : 'bg-slate-900 text-slate-300 hover:bg-slate-800 border border-slate-800'
                 }`}
                 title={`Toggle Autonomous Agent Mode (Wake Word: "${wakeUpWord}")`}
               >
@@ -1219,7 +1229,7 @@ export default function DisciplineDashboardClient({
                 >
                   <div
                     className={`w-2.5 h-2.5 rounded-full transition-transform ${
-                      isAgentMode ? 'bg-emerald-400' : 'bg-slate-400'
+                      isAgentMode ? 'bg-teal-400' : 'bg-slate-400'
                     }`}
                   />
                 </div>
@@ -1526,70 +1536,68 @@ export default function DisciplineDashboardClient({
         </section>
       </main>
 
-      {/* Fixed Bottom Navigation Bar: Attendance, Calendar, Exercise, Motivation, News, Chat */}
+      {/* Floating Capsule Bottom Navigation Dock (Ref Image 2) */}
       <nav
         aria-label="Primary Bottom Navigation"
-        className="fixed bottom-0 left-0 right-0 z-30 p-2.5 bg-white/95 backdrop-blur-md border-t border-slate-200"
+        className="fixed bottom-3 inset-x-3 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 sm:max-w-xl z-40 cyber-nav-dock rounded-full px-2 py-1.5 flex items-center justify-between gap-1 shadow-2xl"
       >
-        <div className="grid grid-cols-6 gap-1 max-w-xl mx-auto">
-          <button
-            type="button"
-            onClick={() => openAttendance()}
-            className="min-h-[46px] rounded-xl bg-teal-700 hover:bg-teal-800 text-white font-semibold text-[11px] flex flex-col items-center justify-center gap-0.5 transition-colors cursor-pointer"
-          >
-            <CheckSquare className="w-4 h-4" />
-            <span>Attendance</span>
-          </button>
+        <button
+          type="button"
+          onClick={() => openAttendance()}
+          className="cyber-pill-active rounded-full px-3.5 py-1 flex flex-col items-center gap-0.5 transition-all cursor-pointer min-w-[62px]"
+        >
+          <CheckSquare className="w-4 h-4 text-teal-400" />
+          <span className="text-[10px] font-bold">Attendance</span>
+        </button>
 
-          <button
-            type="button"
-            onClick={() => setIsCalendarOpen(true)}
-            className="min-h-[46px] rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-900 font-semibold text-[11px] flex flex-col items-center justify-center gap-0.5 transition-colors cursor-pointer"
-          >
-            <Calendar className="w-4 h-4 text-teal-700" />
-            <span>Calendar</span>
-          </button>
+        <button
+          type="button"
+          onClick={() => setIsCalendarOpen(true)}
+          className="rounded-full px-2.5 py-1 text-slate-400 hover:text-white flex flex-col items-center gap-0.5 transition-colors cursor-pointer min-w-[56px]"
+        >
+          <Calendar className="w-4 h-4" />
+          <span className="text-[10px] font-medium">Calendar</span>
+        </button>
 
-          <button
-            type="button"
-            onClick={() => setIsWorkoutOpen(true)}
-            className="min-h-[46px] rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-900 font-semibold text-[11px] flex flex-col items-center justify-center gap-0.5 transition-colors cursor-pointer"
-          >
-            <Dumbbell className="w-4 h-4 text-teal-700" />
-            <span>Exercise</span>
-          </button>
+        <button
+          type="button"
+          onClick={() => setIsWorkoutOpen(true)}
+          className="rounded-full px-2.5 py-1 text-slate-400 hover:text-white flex flex-col items-center gap-0.5 transition-colors cursor-pointer min-w-[56px]"
+        >
+          <Dumbbell className="w-4 h-4" />
+          <span className="text-[10px] font-medium">Exercise</span>
+        </button>
 
-          <button
-            type="button"
-            onClick={() => setIsMotivationHubOpen(true)}
-            className="min-h-[46px] rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-900 font-semibold text-[11px] flex flex-col items-center justify-center gap-0.5 transition-colors cursor-pointer"
-          >
-            <Sparkles className="w-4 h-4 text-teal-700" />
-            <span>Motivation</span>
-          </button>
+        <button
+          type="button"
+          onClick={() => setIsMotivationHubOpen(true)}
+          className="rounded-full px-2.5 py-1 text-slate-400 hover:text-white flex flex-col items-center gap-0.5 transition-colors cursor-pointer min-w-[56px]"
+        >
+          <Sparkles className="w-4 h-4" />
+          <span className="text-[10px] font-medium">Motivation</span>
+        </button>
 
-          <button
-            type="button"
-            onClick={() => {
-              setIsNewsOpen(true);
-              void loadDailyTechNews();
-            }}
-            className="min-h-[46px] rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-900 font-semibold text-[11px] flex flex-col items-center justify-center gap-0.5 transition-colors cursor-pointer"
-          >
-            <Newspaper className="w-4 h-4 text-teal-700" />
-            <span>News</span>
-          </button>
+        <button
+          type="button"
+          onClick={() => {
+            setIsNewsOpen(true);
+            void loadDailyTechNews();
+          }}
+          className="rounded-full px-2.5 py-1 text-slate-400 hover:text-white flex flex-col items-center gap-0.5 transition-colors cursor-pointer min-w-[56px]"
+        >
+          <Newspaper className="w-4 h-4" />
+          <span className="text-[10px] font-medium">News</span>
+        </button>
 
-          <button
-            type="button"
-            onClick={() => setIsChatOpen(true)}
-            className="min-h-[46px] rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-900 font-semibold text-[11px] flex flex-col items-center justify-center gap-0.5 transition-colors cursor-pointer"
-            title="Open Autonomous Discipline Agent"
-          >
-            <Bot className="w-4 h-4 text-emerald-600" />
-            <span>Agent</span>
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => setIsChatOpen(true)}
+          className="rounded-full px-2.5 py-1 text-slate-400 hover:text-white flex flex-col items-center gap-0.5 transition-colors cursor-pointer min-w-[56px]"
+          title="Open Autonomous Discipline Agent"
+        >
+          <Bot className="w-4 h-4" />
+          <span className="text-[10px] font-medium">Agent</span>
+        </button>
       </nav>
 
       {/* Attendance Modal */}

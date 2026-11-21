@@ -414,37 +414,37 @@ export default function UserSettingsModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-3 sm:p-6 bg-slate-900/60 backdrop-blur-sm overflow-y-auto pt-[max(env(safe-area-inset-top),20px)] pb-12 modal-backdrop-in"
+      className="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-md overflow-y-auto pt-[max(env(safe-area-inset-top),20px)] pb-12 modal-backdrop-in"
       role="dialog"
       aria-modal="true"
     >
       <div
-        className="w-full max-w-lg bg-white border border-slate-200 rounded-3xl p-5 sm:p-7 shadow-2xl space-y-6 my-auto sm:my-8 text-slate-900 modal-dialog-in"
+        className="w-full max-w-lg cyber-card border border-slate-800 rounded-3xl p-5 sm:p-7 shadow-2xl space-y-6 my-auto sm:my-8 text-white modal-dialog-in"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header with Left Back Arrow */}
-        <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
+        <div className="flex items-center gap-3 border-b border-slate-800/80 pb-4">
           <button
             type="button"
             onClick={onClose}
-            className="min-h-[40px] min-w-[40px] -ml-1 flex items-center justify-center rounded-xl text-slate-700 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer"
+            className="min-h-[40px] min-w-[40px] -ml-1 flex items-center justify-center rounded-2xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white transition-colors cursor-pointer"
             aria-label="Back to dashboard"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <div className="p-2.5 rounded-2xl bg-teal-50 text-teal-700 border border-teal-200/60 shrink-0">
+          <div className="p-2.5 rounded-2xl bg-slate-900 text-[var(--theme-primary)] border border-[var(--theme-primary)]/30 shrink-0">
             <Key className="w-5 h-5" />
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <h3 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">
+              <h3 className="text-base sm:text-lg font-black text-white tracking-tight">
                 AI &amp; Jarvis Settings
               </h3>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-50 text-teal-700 border border-teal-200/60">
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[var(--theme-primary)]/15 text-[var(--theme-primary)] border border-[var(--theme-primary)]/30">
                 Multi-Key
               </span>
             </div>
-            <p className="text-xs text-slate-500 truncate">
+            <p className="text-xs text-slate-400 truncate">
               Round-robin keys, voice configuration &amp; biometric lock
             </p>
           </div>
@@ -452,8 +452,8 @@ export default function UserSettingsModal({
 
         {/* Status Toast */}
         {saveStatus && (
-          <div className="p-3.5 rounded-2xl bg-teal-50 border border-teal-200 flex items-center gap-2 text-xs font-semibold text-teal-800">
-            <CheckCircle2 className="w-4 h-4 text-teal-600 shrink-0" />
+          <div className="p-3.5 rounded-2xl bg-[var(--theme-primary)]/15 border border-[var(--theme-primary)]/40 flex items-center gap-2 text-xs font-semibold text-[var(--theme-primary)]">
+            <CheckCircle2 className="w-4 h-4 shrink-0" />
             <span>{saveStatus}</span>
           </div>
         )}
@@ -464,17 +464,17 @@ export default function UserSettingsModal({
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Key className="w-4 h-4 text-teal-700" />
-              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800">
+              <Key className="w-4 h-4 text-[var(--theme-primary)]" />
+              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-300">
                 Gemini API Keys ({keysList.length}/{MAX_GEMINI_KEYS})
               </h4>
             </div>
-            <span className="text-[10px] font-bold px-2 py-0.5 bg-teal-100/70 text-teal-800 rounded-md border border-teal-200">
+            <span className="text-[10px] font-bold px-2 py-0.5 bg-[var(--theme-primary)]/15 text-[var(--theme-primary)] rounded-full border border-[var(--theme-primary)]/30">
               Round-Robin Active
             </span>
           </div>
 
-          <p className="text-xs text-slate-600 leading-relaxed">
+          <p className="text-xs text-slate-400 leading-relaxed">
             Add up to <strong>10 Gemini API keys</strong>. Requests dynamically rotate across your keys so your free quota never exhausts. If any key hits rate limits, Jarvis automatically fails over to the next key.
           </p>
 
@@ -486,13 +486,13 @@ export default function UserSettingsModal({
               onChange={(e) => setNewKeyInput(e.target.value)}
               placeholder="Paste new Gemini API key (AIzaSy...)"
               disabled={keysList.length >= MAX_GEMINI_KEYS}
-              className="flex-1 px-3.5 py-2.5 bg-slate-50 border border-slate-200 focus:border-teal-600 focus:bg-white rounded-xl text-xs font-mono text-slate-900 placeholder-slate-400 outline-none transition-all disabled:opacity-50"
+              className="flex-1 px-3.5 py-2.5 bg-slate-900 border border-slate-800 focus:border-[var(--theme-primary)] focus:bg-slate-950 rounded-xl text-xs font-mono text-white placeholder-slate-500 outline-none transition-all disabled:opacity-50"
             />
             <button
               type="button"
               onClick={handleAddKey}
               disabled={!newKeyInput.trim() || keysList.length >= MAX_GEMINI_KEYS}
-              className="px-4 py-2.5 bg-teal-700 hover:bg-teal-800 disabled:bg-slate-200 disabled:text-slate-400 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
+              className="cyber-btn-primary px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 disabled:opacity-50"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Add Key</span>
@@ -502,7 +502,7 @@ export default function UserSettingsModal({
           {/* Keys List */}
           <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
             {keysList.length === 0 ? (
-              <div className="p-4 bg-slate-50 rounded-xl border border-dashed border-slate-300 text-center text-xs text-slate-500">
+              <div className="p-4 bg-slate-900/60 rounded-xl border border-dashed border-slate-800 text-center text-xs text-slate-400">
                 No custom keys added yet. The app is currently using the shared server key. Add your personal Google keys above for higher limits!
               </div>
             ) : (
@@ -514,19 +514,19 @@ export default function UserSettingsModal({
                 return (
                   <div
                     key={idx}
-                    className="p-3 bg-slate-50 hover:bg-slate-100/80 border border-slate-200 rounded-xl flex flex-col gap-2 transition-colors"
+                    className="p-3 bg-slate-900/70 hover:bg-slate-900 border border-slate-800 rounded-xl flex flex-col gap-2 transition-colors"
                   >
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0">
-                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-200 text-slate-700 shrink-0">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-300 shrink-0">
                           Key #{idx + 1}
                         </span>
                         {isNextInRotation && (
-                          <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 shrink-0">
+                          <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-[var(--theme-primary)]/20 text-[var(--theme-primary)] border border-[var(--theme-primary)]/40 shrink-0">
                             Next
                           </span>
                         )}
-                        <span className="font-mono text-xs text-slate-700 truncate">
+                        <span className="font-mono text-xs text-slate-300 truncate">
                           {keyStr.slice(0, 8)}••••••••{keyStr.slice(-4)}
                         </span>
                       </div>
@@ -536,10 +536,10 @@ export default function UserSettingsModal({
                           type="button"
                           onClick={() => handleVerifyIndividualKey(keyStr, idx)}
                           disabled={isThisVerifying}
-                          className="px-2.5 py-1 text-[11px] font-semibold text-teal-700 bg-white border border-teal-200 hover:bg-teal-50 rounded-lg transition-colors cursor-pointer flex items-center gap-1"
+                          className="px-2.5 py-1 text-[11px] font-semibold text-[var(--theme-primary)] bg-slate-800 border border-slate-700 hover:bg-slate-750 rounded-lg transition-colors cursor-pointer flex items-center gap-1"
                         >
                           {isThisVerifying ? (
-                            <Loader2 className="w-3 h-3 animate-spin text-teal-600" />
+                            <Loader2 className="w-3 h-3 animate-spin text-[var(--theme-primary)]" />
                           ) : (
                             <RefreshCw className="w-3 h-3" />
                           )}
@@ -549,7 +549,7 @@ export default function UserSettingsModal({
                         <button
                           type="button"
                           onClick={() => handleRemoveKey(idx)}
-                          className="p-1 text-slate-400 hover:text-rose-600 rounded-lg transition-colors cursor-pointer"
+                          className="p-1 text-slate-400 hover:text-rose-400 rounded-lg transition-colors cursor-pointer"
                           title="Remove Key"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -560,13 +560,13 @@ export default function UserSettingsModal({
                     {verification && (
                       <div
                         className={`text-[10px] font-medium flex items-center gap-1.5 ${
-                          verification.valid ? 'text-emerald-700' : 'text-rose-700'
+                          verification.valid ? 'text-emerald-400' : 'text-rose-400'
                         }`}
                       >
                         {verification.valid ? (
-                          <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
+                          <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
                         ) : (
-                          <AlertCircle className="w-3 h-3 text-rose-600 shrink-0" />
+                          <AlertCircle className="w-3 h-3 text-rose-400 shrink-0" />
                         )}
                         <span>{verification.message}</span>
                       </div>
@@ -582,7 +582,7 @@ export default function UserSettingsModal({
               href="https://aistudio.google.com/app/apikey"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-[11px] font-semibold text-teal-700 hover:underline flex items-center gap-1"
+              className="text-[11px] font-semibold text-[var(--theme-primary)] hover:underline flex items-center gap-1"
             >
               <span>Get more free keys on Google AI Studio</span>
               <ExternalLink className="w-3 h-3" />
@@ -593,20 +593,20 @@ export default function UserSettingsModal({
         {/* =========================================================================
             SECTION 2: UI/UX VISUAL THEMES (THEME 1, THEME 2, THEME 3)
             ========================================================================= */}
-        <div className="space-y-3.5 pt-4 border-t border-slate-100">
+        <div className="space-y-3.5 pt-4 border-t border-slate-800/80">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Palette className="w-4 h-4 text-teal-700" />
-              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800">
+              <Palette className="w-4 h-4 text-[var(--theme-primary)]" />
+              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-300">
                 Visual Themes ({themes.length})
               </h4>
             </div>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-50 text-teal-800 border border-teal-200">
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[var(--theme-primary)]/15 text-[var(--theme-primary)] border border-[var(--theme-primary)]/30">
               Default: Theme 2
             </span>
           </div>
 
-          <p className="text-xs text-slate-600 leading-relaxed">
+          <p className="text-xs text-slate-400 leading-relaxed">
             Choose your preferred color theme combination. Colors and card glows update dynamically across your screen.
           </p>
 
@@ -696,22 +696,22 @@ export default function UserSettingsModal({
         {/* =========================================================================
             SECTION 3: JARVIS VOICE CONFIGURATION & REAL-TIME DEMO
             ========================================================================= */}
-        <div className="space-y-4 pt-3 border-t border-slate-100">
+        <div className="space-y-4 pt-3 border-t border-slate-800/80">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Volume2 className="w-4 h-4 text-teal-700" />
-              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800">
+              <Volume2 className="w-4 h-4 text-[var(--theme-primary)]" />
+              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-300">
                 Jarvis Voice Persona &amp; Audio Demo
               </h4>
             </div>
-            <span className="text-[10px] font-bold text-slate-500">
+            <span className="text-[10px] font-bold text-slate-400">
               Neural Text-to-Speech
             </span>
           </div>
 
           {/* Voice Selector */}
           <div className="space-y-2">
-            <label className="text-xs font-semibold text-slate-700 block">
+            <label className="text-xs font-semibold text-slate-300 block">
               Select Voice Tone:
             </label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -724,17 +724,17 @@ export default function UserSettingsModal({
                     onClick={() => handleSaveVoice(voice.id)}
                     className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
                       isSelected
-                        ? 'bg-teal-50 border-teal-600 text-teal-950 ring-1 ring-teal-500'
-                        : 'bg-slate-50 border-slate-200 text-slate-800 hover:bg-slate-100'
+                        ? 'bg-[var(--theme-primary)]/15 border-[var(--theme-primary)] text-white ring-1 ring-[var(--theme-primary)]/50'
+                        : 'bg-slate-900/80 border-slate-800 text-slate-300 hover:bg-slate-850 hover:text-white'
                     }`}
                   >
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold">{voice.name}</span>
-                      <span className="text-[9px] uppercase px-1.5 py-0.2 rounded bg-slate-200 text-slate-700">
+                      <span className="text-[9px] uppercase px-1.5 py-0.2 rounded bg-slate-800 text-slate-300">
                         {voice.gender}
                       </span>
                     </div>
-                    <p className="text-[10px] text-slate-500 mt-0.5 line-clamp-1">
+                    <p className="text-[10px] text-slate-400 mt-0.5 line-clamp-1">
                       {voice.subtitle}
                     </p>
                   </button>
@@ -745,7 +745,7 @@ export default function UserSettingsModal({
 
           {/* Emotion & Tone Mode (User-configurable inline emotion) */}
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-700 block">
+            <label className="text-xs font-semibold text-slate-300 block">
               Jarvis Emotion &amp; Motivation Style:
             </label>
             <div className="grid grid-cols-3 gap-2">
@@ -754,12 +754,12 @@ export default function UserSettingsModal({
                 onClick={() => handleSaveEmotion('energetic_confident')}
                 className={`py-2 px-2 rounded-xl border text-center transition-all cursor-pointer ${
                   voiceEmotion === 'energetic_confident'
-                    ? 'bg-teal-50 border-teal-600 text-teal-950 ring-1 ring-teal-500 font-bold'
-                    : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100 font-medium'
+                    ? 'cyber-pill-active font-black'
+                    : 'bg-slate-900 border-slate-800 text-slate-400 hover:bg-slate-850 hover:text-slate-200 font-medium'
                 }`}
               >
                 <span className="text-[11px] block">Energetic</span>
-                <span className="text-[9px] text-slate-500 block">High confidence</span>
+                <span className="text-[9px] opacity-75 block">High confidence</span>
               </button>
 
               <button
@@ -767,12 +767,12 @@ export default function UserSettingsModal({
                 onClick={() => handleSaveEmotion('fierce_discipline')}
                 className={`py-2 px-2 rounded-xl border text-center transition-all cursor-pointer ${
                   voiceEmotion === 'fierce_discipline'
-                    ? 'bg-teal-50 border-teal-600 text-teal-950 ring-1 ring-teal-500 font-bold'
-                    : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100 font-medium'
+                    ? 'cyber-pill-active font-black'
+                    : 'bg-slate-900 border-slate-800 text-slate-400 hover:bg-slate-850 hover:text-slate-200 font-medium'
                 }`}
               >
                 <span className="text-[11px] block">Fierce</span>
-                <span className="text-[9px] text-slate-500 block">Iron discipline</span>
+                <span className="text-[9px] opacity-75 block">Iron discipline</span>
               </button>
 
               <button
@@ -780,12 +780,12 @@ export default function UserSettingsModal({
                 onClick={() => handleSaveEmotion('calm_focus')}
                 className={`py-2 px-2 rounded-xl border text-center transition-all cursor-pointer ${
                   voiceEmotion === 'calm_focus'
-                    ? 'bg-teal-50 border-teal-600 text-teal-950 ring-1 ring-teal-500 font-bold'
-                    : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100 font-medium'
+                    ? 'cyber-pill-active font-black'
+                    : 'bg-slate-900 border-slate-800 text-slate-400 hover:bg-slate-850 hover:text-slate-200 font-medium'
                 }`}
               >
                 <span className="text-[11px] block">Calm Focus</span>
-                <span className="text-[9px] text-slate-500 block">Stoic depth</span>
+                <span className="text-[9px] opacity-75 block">Stoic depth</span>
               </button>
             </div>
           </div>
@@ -793,8 +793,8 @@ export default function UserSettingsModal({
           {/* Speed / Rate Slider */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between text-xs">
-              <span className="font-semibold text-slate-700">Speech Rate / Speed:</span>
-              <span className="font-mono text-teal-700 font-bold">{voiceRate.toFixed(2)}x</span>
+              <span className="font-semibold text-slate-300">Speech Rate / Speed:</span>
+              <span className="font-mono text-[var(--theme-primary)] font-bold">{voiceRate.toFixed(2)}x</span>
             </div>
             <input
               type="range"
@@ -803,15 +803,15 @@ export default function UserSettingsModal({
               step="0.05"
               value={voiceRate}
               onChange={(e) => handleSaveRate(parseFloat(e.target.value))}
-              className="w-full accent-teal-600 cursor-pointer"
+              className="w-full accent-[var(--theme-primary)] cursor-pointer"
             />
           </div>
 
           {/* Voice Demo Preview Player */}
-          <div className="p-3 bg-slate-900 text-white rounded-2xl flex items-center justify-between gap-3 shadow-md">
+          <div className="p-3.5 bg-slate-900/90 border border-slate-800 text-white rounded-2xl flex items-center justify-between gap-3 shadow-md">
             <div>
               <p className="text-xs font-bold text-white flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-teal-400" />
+                <Sparkles className="w-3.5 h-3.5 text-[var(--theme-primary)]" />
                 <span>Audio Preview: {JARVIS_VOICE_OPTIONS.find((v) => v.id === selectedVoiceId)?.name}</span>
               </p>
               <p className="text-[10px] text-slate-400 mt-0.5">
@@ -822,10 +822,8 @@ export default function UserSettingsModal({
             <button
               type="button"
               onClick={handlePlayVoiceDemo}
-              className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
-                isPlayingDemo
-                  ? 'bg-amber-500 hover:bg-amber-600 text-slate-950 animate-pulse'
-                  : 'bg-teal-500 hover:bg-teal-400 text-slate-950 shadow-md shadow-teal-500/30'
+              className={`cyber-btn-primary px-4 py-2 rounded-full text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                isPlayingDemo ? 'animate-pulse' : ''
               }`}
             >
               {isPlayingDemo ? (
@@ -844,12 +842,12 @@ export default function UserSettingsModal({
         </div>
 
         {/* =========================================================================
-            SECTION 3: WAKE-UP WORD & AGENT ACTIVATION
+            SECTION 4: WAKE-UP WORD & AGENT ACTIVATION
             ========================================================================= */}
-        <div className="space-y-3 pt-3 border-t border-slate-100">
+        <div className="space-y-3 pt-3 border-t border-slate-800/80">
           <div className="flex items-center gap-2">
-            <Mic className="w-4 h-4 text-teal-700" />
-            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800">
+            <Mic className="w-4 h-4 text-[var(--theme-primary)]" />
+            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-300">
               Agent Wake-Up Word
             </h4>
           </div>
@@ -860,36 +858,36 @@ export default function UserSettingsModal({
               value={wakeUpWord}
               onChange={(e) => setWakeUpWord(e.target.value)}
               placeholder="Jarvis"
-              className="flex-1 px-3.5 py-2.5 bg-slate-50 border border-slate-200 focus:border-teal-600 focus:bg-white rounded-xl text-xs font-bold text-slate-900 outline-none"
+              className="flex-1 px-3.5 py-2.5 bg-slate-900 border border-slate-800 focus:border-[var(--theme-primary)] focus:bg-slate-950 rounded-xl text-xs font-bold text-white outline-none"
             />
             <button
               type="button"
               onClick={handleSaveWakeUpWord}
-              className="px-4 py-2.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer shrink-0"
+              className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer shrink-0"
             >
               Save Word
             </button>
           </div>
 
           {wakeWordSaveStatus && (
-            <p className="text-[11px] font-semibold text-teal-700">
+            <p className="text-[11px] font-semibold text-[var(--theme-primary)]">
               {wakeWordSaveStatus}
             </p>
           )}
         </div>
 
         {/* =========================================================================
-            SECTION 4: BIOMETRIC SCREEN LOCK SECURITY
+            SECTION 5: BIOMETRIC SCREEN LOCK SECURITY
             ========================================================================= */}
-        <div className="space-y-3 pt-3 border-t border-slate-100">
+        <div className="space-y-3 pt-3 border-t border-slate-800/80">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Fingerprint className="w-4 h-4 text-emerald-600" />
+              <Fingerprint className="w-4 h-4 text-emerald-400" />
               <div>
-                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-300">
                   App Lock (Fingerprint / Screen Lock)
                 </h4>
-                <p className="text-[11px] text-slate-500">
+                <p className="text-[11px] text-slate-400">
                   Require device authentication before launching app
                 </p>
               </div>
@@ -901,11 +899,11 @@ export default function UserSettingsModal({
               aria-checked={biometricEnabled}
               onClick={() => handleToggleBiometric(!biometricEnabled)}
               className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors cursor-pointer ${
-                biometricEnabled ? 'bg-emerald-500' : 'bg-slate-300'
+                biometricEnabled ? 'bg-[var(--theme-primary)]' : 'bg-slate-700'
               }`}
             >
               <div
-                className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                className={`bg-slate-950 w-4 h-4 rounded-full shadow-md transform transition-transform ${
                   biometricEnabled ? 'translate-x-5' : 'translate-x-0'
                 }`}
               />
@@ -913,38 +911,38 @@ export default function UserSettingsModal({
           </div>
 
           {biometricEnabled && (
-            <div className="p-3 bg-emerald-50 border border-emerald-200/60 rounded-xl space-y-2">
+            <div className="p-3 bg-slate-900/90 border border-slate-800 rounded-xl space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] text-emerald-800 font-semibold">
+                <span className="text-[11px] text-emerald-400 font-semibold">
                   Hardware Authentication Active
                 </span>
                 <button
                   type="button"
                   onClick={handleTestBiometric}
                   disabled={isTestingBiometric}
-                  className="px-2.5 py-1 text-[10px] font-bold text-emerald-800 bg-white border border-emerald-300 rounded-lg hover:bg-emerald-100 transition-colors cursor-pointer flex items-center gap-1"
+                  className="px-2.5 py-1 text-[10px] font-bold text-slate-200 bg-slate-800 border border-slate-700 rounded-lg hover:bg-slate-750 transition-colors cursor-pointer flex items-center gap-1"
                 >
                   {isTestingBiometric ? (
-                    <Loader2 className="w-3 h-3 animate-spin text-emerald-600" />
+                    <Loader2 className="w-3 h-3 animate-spin text-emerald-400" />
                   ) : (
-                    <Fingerprint className="w-3 h-3 text-emerald-600" />
+                    <Fingerprint className="w-3 h-3 text-emerald-400" />
                   )}
                   <span>Test Sensor</span>
                 </button>
               </div>
 
               {biometricTestStatus && (
-                <p className="text-[10px] font-medium text-emerald-900">
+                <p className="text-[10px] font-medium text-emerald-300">
                   {biometricTestStatus}
                 </p>
               )}
 
               {/* 4-Digit Backup PIN Configuration */}
-              <div className="pt-2 border-t border-emerald-200/50 space-y-2">
+              <div className="pt-2 border-t border-slate-800 space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5">
-                    <KeyRound className="w-3.5 h-3.5 text-emerald-700" />
-                    <span className="text-[11px] font-bold text-slate-800">
+                    <KeyRound className="w-3.5 h-3.5 text-[var(--theme-primary)]" />
+                    <span className="text-[11px] font-bold text-slate-300">
                       Security PIN Backup
                     </span>
                   </div>
@@ -956,7 +954,7 @@ export default function UserSettingsModal({
                         setPinValue('');
                         setPinStatus(null);
                       }}
-                      className="text-[10px] font-bold text-emerald-700 hover:text-emerald-900 transition-colors cursor-pointer"
+                      className="text-[10px] font-bold text-[var(--theme-primary)] hover:underline transition-colors cursor-pointer"
                     >
                       {hasConfiguredPin ? 'Change PIN' : '+ Set 4-Digit PIN'}
                     </button>
@@ -964,12 +962,12 @@ export default function UserSettingsModal({
                 </div>
 
                 {hasConfiguredPin && !showPinInput && (
-                  <div className="flex items-center justify-between text-[11px] text-slate-600">
+                  <div className="flex items-center justify-between text-[11px] text-slate-400">
                     <span>4-digit backup PIN is active (••••)</span>
                     <button
                       type="button"
                       onClick={handleRemovePin}
-                      className="text-[10px] text-rose-600 hover:text-rose-800 font-semibold cursor-pointer"
+                      className="text-[10px] text-rose-400 hover:text-rose-300 font-semibold cursor-pointer"
                     >
                       Remove
                     </button>
@@ -986,12 +984,12 @@ export default function UserSettingsModal({
                       value={pinValue}
                       onChange={(e) => setPinValue(e.target.value.replace(/\D/g, '').slice(0, 4))}
                       placeholder="4 digits"
-                      className="w-24 px-2.5 py-1 text-center font-mono tracking-widest text-xs bg-white border border-slate-300 rounded-lg outline-none focus:border-emerald-500"
+                      className="w-24 px-2.5 py-1 text-center font-mono tracking-widest text-xs bg-slate-950 border border-slate-700 rounded-lg outline-none focus:border-[var(--theme-primary)] text-white"
                     />
                     <button
                       type="button"
                       onClick={handleSavePin}
-                      className="px-2.5 py-1 text-[11px] font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors cursor-pointer"
+                      className="cyber-btn-primary px-3 py-1 text-[11px] font-bold rounded-lg cursor-pointer"
                     >
                       Save
                     </button>
@@ -1001,7 +999,7 @@ export default function UserSettingsModal({
                         setShowPinInput(false);
                         setPinValue('');
                       }}
-                      className="px-2 py-1 text-[11px] text-slate-600 hover:text-slate-800 cursor-pointer"
+                      className="px-2 py-1 text-[11px] text-slate-400 hover:text-slate-200 cursor-pointer"
                     >
                       Cancel
                     </button>
@@ -1009,7 +1007,7 @@ export default function UserSettingsModal({
                 )}
 
                 {pinStatus && (
-                  <p className="text-[10px] font-semibold text-emerald-800">
+                  <p className="text-[10px] font-semibold text-emerald-400">
                     {pinStatus}
                   </p>
                 )}
@@ -1019,11 +1017,11 @@ export default function UserSettingsModal({
         </div>
 
         {/* Modal Footer */}
-        <div className="pt-2 border-t border-slate-100 flex items-center justify-end">
+        <div className="pt-2 border-t border-slate-800/80">
           <button
             type="button"
             onClick={onClose}
-            className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-teal-700 hover:bg-teal-800 text-white font-bold text-xs transition-colors cursor-pointer shadow-sm"
+            className="cyber-btn-primary w-full py-4 rounded-full text-sm font-black shadow-lg uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer active:scale-98 transition-all"
           >
             Done / Close Settings
           </button>

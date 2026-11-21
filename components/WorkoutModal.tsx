@@ -389,24 +389,24 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
 
   return (
     <div
-      className="fixed inset-0 z-50 w-full h-full bg-slate-50 text-slate-900 flex flex-col overflow-hidden modal-sheet-in"
+      className="fixed inset-0 z-50 w-full h-full bg-[#080d1a] text-white flex flex-col overflow-hidden modal-sheet-in"
       role="dialog"
       aria-modal="true"
       aria-labelledby="workout-feature-title"
     >
-      {/* Full-Screen Light Header with Safe Area & Left Back Arrow */}
-      <header className="bg-white border-b border-slate-200 px-4 sm:px-6 pt-[max(env(safe-area-inset-top),16px)] pb-3 shrink-0">
+      {/* Full-Screen Dark Cyber Header with Safe Area & Left Back Arrow */}
+      <header className="bg-[#0b1222]/90 border-b border-slate-800/80 px-4 sm:px-6 pt-[max(env(safe-area-inset-top),16px)] pb-3 shrink-0 backdrop-blur-md">
         <div className="max-w-6xl w-full mx-auto flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 sm:gap-3">
             <button
               type="button"
               onClick={handleClose}
               aria-label="Back to dashboard"
-              className="min-h-[40px] min-w-[40px] -ml-2 inline-flex items-center justify-center rounded-xl text-slate-700 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer"
+              className="min-h-[40px] min-w-[40px] -ml-2 inline-flex items-center justify-center rounded-2xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white transition-colors cursor-pointer"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
-            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl overflow-hidden bg-black p-1 border border-slate-800 shrink-0 shadow-sm hidden xs:block">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl overflow-hidden bg-slate-950 p-1 border border-slate-800 shrink-0 shadow-sm hidden xs:block">
               <Image
                 src="/logo.png"
                 alt="BeyondLimits Logo"
@@ -417,16 +417,16 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 id="workout-feature-title" className="text-base sm:text-lg font-bold text-slate-900">
+                <h2 id="workout-feature-title" className="text-base sm:text-lg font-black text-white tracking-tight">
                   BeyondLimits Workout
                 </h2>
                 {phase !== 'overview' && phase !== 'completed' && (
-                  <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-teal-50 text-teal-700 border border-teal-200">
+                  <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-[var(--theme-primary)]/15 text-[var(--theme-primary)] border border-[var(--theme-primary)]/30">
                     Step {currentIndex + 1} of {activeExercises.length}
                   </span>
                 )}
               </div>
-              <p className="text-xs text-slate-500 hidden sm:block">
+              <p className="text-xs text-slate-400 hidden sm:block">
                 {activeRoutine?.name || 'Workout'} · {activeExercises.length} Exercises · 1 min each · 30s rest
               </p>
             </div>
@@ -438,14 +438,14 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
               type="button"
               onClick={toggleWorkoutMusic}
               aria-label={isMusicEnabled ? 'Turn off workout music' : 'Turn on workout music'}
-              className={`min-h-[40px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl transition-all cursor-pointer border ${
+              className={`min-h-[40px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-full transition-all cursor-pointer border ${
                 isMusicEnabled
-                  ? 'bg-teal-50 text-teal-700 border-teal-200'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 border-slate-200 bg-white'
+                  ? 'bg-[var(--theme-primary)]/20 text-[var(--theme-primary)] border-[var(--theme-primary)]/40'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-850 border-slate-800 bg-slate-900'
               }`}
               title={isMusicEnabled ? 'Turn off workout music' : 'Turn on workout music'}
             >
-              <Music className={`w-4 h-4 ${isMusicEnabled ? 'text-teal-600' : 'text-slate-400'}`} />
+              <Music className={`w-4 h-4 ${isMusicEnabled ? 'text-[var(--theme-primary)]' : 'text-slate-400'}`} />
               <span className="hidden xs:inline">{isMusicEnabled ? 'Music: ON' : 'Turn on Music'}</span>
             </button>
 
@@ -453,7 +453,7 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
               <button
                 type="button"
                 onClick={() => setPhase('overview')}
-                className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer border border-slate-200"
+                className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-300 hover:text-white bg-slate-900 hover:bg-slate-850 rounded-full transition-colors cursor-pointer border border-slate-800"
               >
                 <ChevronLeft className="w-4 h-4" />
                 <span>Exercise List</span>
@@ -464,10 +464,10 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
               type="button"
               onClick={toggleMute}
               aria-label={isMuted ? 'Unmute voice and sound cues' : 'Mute voice and sound cues'}
-              className="min-h-[40px] min-w-[40px] inline-flex items-center justify-center rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer border border-slate-200"
+              className="min-h-[40px] min-w-[40px] inline-flex items-center justify-center rounded-2xl text-slate-400 hover:text-white bg-slate-900 hover:bg-slate-850 transition-colors cursor-pointer border border-slate-800"
               title={isMuted ? 'Unmute voice coaching' : 'Mute voice coaching'}
             >
-              {isMuted ? <VolumeX className="w-5 h-5 text-red-500" /> : <Volume2 className="w-5 h-5 text-teal-700" />}
+              {isMuted ? <VolumeX className="w-5 h-5 text-rose-500" /> : <Volume2 className="w-5 h-5 text-[var(--theme-primary)]" />}
             </button>
           </div>
         </div>
@@ -492,16 +492,16 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
                         setSelectedRoutineId(routine.id);
                         setCurrentIndex(0);
                       }}
-                      className={`min-h-[40px] px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition-all cursor-pointer border flex items-center gap-2 ${
+                      className={`min-h-[40px] px-4 py-2 rounded-full text-xs font-black whitespace-nowrap transition-all cursor-pointer border flex items-center gap-2 ${
                         isSelected
-                          ? 'bg-teal-700 text-white border-teal-700 shadow-sm'
-                          : 'bg-white text-slate-700 hover:text-slate-900 hover:bg-slate-50 border-slate-200'
+                          ? 'cyber-btn-primary shadow-md'
+                          : 'bg-slate-900/80 text-slate-300 hover:text-white hover:bg-slate-850 border-slate-800'
                       }`}
                     >
                       <span>{routine.badge || routine.name}</span>
                       <span
-                        className={`px-1.5 py-0.5 rounded-md text-[10px] font-mono font-bold ${
-                          isSelected ? 'bg-teal-800 text-teal-100' : 'bg-slate-100 text-slate-600'
+                        className={`px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold ${
+                          isSelected ? 'bg-black/30 text-current' : 'bg-slate-800 text-slate-400'
                         }`}
                       >
                         {routine.exercises?.length || 0}
@@ -513,35 +513,35 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
             )}
 
             {/* Hero Card */}
-            <div className="bg-white border border-slate-200 rounded-2xl sm:rounded-3xl p-5 sm:p-8 shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+            <div className="cyber-card border border-slate-800/80 rounded-3xl p-5 sm:p-8 shadow-2xl flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative overflow-hidden">
               <div className="space-y-3 max-w-2xl">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-50 border border-teal-200 text-teal-800 text-xs font-semibold">
-                  <Flame className="w-4 h-4 text-teal-700" />
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--theme-primary)]/15 border border-[var(--theme-primary)]/30 text-[var(--theme-primary)] text-xs font-bold">
+                  <Flame className="w-4 h-4 text-[var(--theme-primary)]" />
                   {activeRoutine?.badge || 'Home Workout'}
                 </div>
 
-                <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+                <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
                   {activeRoutine?.name || 'Daily Discipline Workout'}
                 </h1>
 
-                <p className="text-slate-600 text-sm sm:text-base leading-relaxed">
+                <p className="text-slate-400 text-sm sm:text-base leading-relaxed">
                   {activeRoutine?.description ||
                     'Complete exercises in order with guided audio voice coaching, animated timers, and form instructions.'}
                 </p>
 
                 <div className="flex flex-wrap items-center gap-3 pt-1">
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 text-slate-700 text-xs font-semibold">
-                    <Clock className="w-4 h-4 text-teal-700" />
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 text-xs font-semibold">
+                    <Clock className="w-4 h-4 text-[var(--theme-primary)]" />
                     <span>~{Math.round(activeExercises.length * 1.5)} Mins Total</span>
                   </div>
 
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 text-slate-700 text-xs font-semibold">
-                    <Sparkles className="w-4 h-4 text-amber-600" />
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 text-xs font-semibold">
+                    <Sparkles className="w-4 h-4 text-amber-400" />
                     <span>{activeExercises.length} Exercises (1 min each)</span>
                   </div>
 
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 text-slate-700 text-xs font-semibold">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 text-xs font-semibold">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
                     <span>Audio Voice Coaching</span>
                   </div>
                 </div>
@@ -552,9 +552,9 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
                 <button
                   type="button"
                   onClick={startWorkout}
-                  className="w-full sm:w-auto lg:w-64 py-4 px-8 rounded-2xl bg-teal-700 hover:bg-teal-800 text-white font-bold text-base sm:text-lg shadow-sm hover:shadow transition-all flex items-center justify-center gap-2.5 active:scale-98 cursor-pointer"
+                  className="cyber-btn-primary w-full sm:w-auto lg:w-64 py-4 px-8 rounded-full font-black text-base sm:text-lg shadow-lg flex items-center justify-center gap-2.5 active:scale-95 cursor-pointer"
                 >
-                  <Play className="w-5 h-5 fill-white" />
+                  <Play className="w-5 h-5 fill-current" />
                   <span>Start Workout</span>
                 </button>
               </div>
@@ -563,7 +563,7 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
             {/* Exercise Grid (Laptop 3-4 columns, Mobile 1 column) */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
+                <h3 className="text-xs font-black text-slate-400 uppercase tracking-wider">
                   Exercise Routine ({activeExercises.length} Steps)
                 </h3>
                 <span className="text-xs font-medium text-slate-500">Tap any exercise to preview</span>
@@ -574,9 +574,9 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
                   <div
                     key={exercise.id}
                     onClick={() => beginExercise(idx)}
-                    className="bg-white border border-slate-200 hover:border-teal-500/60 hover:shadow-md rounded-2xl p-3.5 flex items-center gap-3.5 cursor-pointer transition-all active:scale-[0.99] group"
+                    className="cyber-card bg-slate-900/60 hover:border-[var(--theme-primary)]/60 border border-slate-800/80 rounded-2xl p-3.5 flex items-center gap-3.5 cursor-pointer transition-all active:scale-[0.99] group"
                   >
-                    <div className="w-16 h-16 rounded-xl bg-slate-50 overflow-hidden relative shrink-0 border border-slate-200">
+                    <div className="w-16 h-16 rounded-xl bg-slate-950 overflow-hidden relative shrink-0 border border-slate-800">
                       <Image
                         src={exercise.image}
                         alt={exercise.name}
@@ -588,13 +588,13 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
 
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
-                        <span className="text-[11px] font-bold text-teal-700">#{idx + 1}</span>
-                        <span className="text-xs font-mono font-semibold text-slate-500">01:00</span>
+                        <span className="text-[11px] font-bold text-[var(--theme-primary)]">#{idx + 1}</span>
+                        <span className="text-xs font-mono font-semibold text-slate-400">01:00</span>
                       </div>
-                      <h4 className="text-sm font-bold text-slate-900 truncate mt-0.5 group-hover:text-teal-700 transition-colors">
+                      <h4 className="text-sm font-bold text-white truncate mt-0.5 group-hover:text-[var(--theme-primary)] transition-colors">
                         {exercise.name}
                       </h4>
-                      <p className="text-xs text-slate-500 truncate mt-0.5">{exercise.focus}</p>
+                      <p className="text-xs text-slate-400 truncate mt-0.5">{exercise.focus}</p>
                     </div>
                   </div>
                 ))}
@@ -611,16 +611,16 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 flex flex-col justify-center">
           <div className="max-w-5xl w-full mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
             {/* Left: Exercise Graphic Card */}
-            <div className="lg:col-span-7 bg-white border border-slate-200 rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-sm flex flex-col justify-between relative min-h-[320px] sm:min-h-[420px] lg:min-h-[500px]">
+            <div className="lg:col-span-7 cyber-card border border-slate-800/80 rounded-3xl p-4 sm:p-6 shadow-2xl flex flex-col justify-between relative min-h-[320px] sm:min-h-[420px] lg:min-h-[500px]">
               <div className="flex items-center justify-between z-10 mb-2">
-                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-slate-900 text-white">
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-black bg-[var(--theme-primary)] text-black">
                   Next Exercise #{currentIndex + 1}
                 </span>
 
                 <button
                   type="button"
                   onClick={() => setEnlargedImage(currentExercise.image)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer border border-slate-200"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-300 bg-slate-900 hover:bg-slate-850 rounded-full transition-colors cursor-pointer border border-slate-800"
                 >
                   <Maximize2 className="w-3.5 h-3.5" />
                   <span>Enlarge Image</span>
@@ -643,33 +643,33 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
                 />
               </div>
 
-              <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+              <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
                 <span>{currentExercise.focus}</span>
-                <span className="text-teal-700 font-semibold">Click image to zoom form tips</span>
+                <span className="text-[var(--theme-primary)] font-semibold">Click image to zoom form tips</span>
               </div>
             </div>
 
             {/* Right: Countdown & Action Card */}
-            <div className="lg:col-span-5 bg-white border border-slate-200 rounded-2xl sm:rounded-3xl p-6 sm:p-8 shadow-sm flex flex-col justify-between text-center min-h-[320px] sm:min-h-[420px] lg:min-h-[500px]">
+            <div className="lg:col-span-5 cyber-card border border-slate-800/80 rounded-3xl p-6 sm:p-8 shadow-2xl flex flex-col justify-between text-center min-h-[320px] sm:min-h-[420px] lg:min-h-[500px]">
               <div>
-                <span className="text-xs font-extrabold uppercase tracking-widest text-teal-700">
+                <span className="text-xs font-black uppercase tracking-widest text-[var(--theme-primary)]">
                   GET READY
                 </span>
-                <h2 className="text-2xl sm:text-3xl font-black text-slate-900 uppercase tracking-tight mt-1">
+                <h2 className="text-2xl sm:text-3xl font-black text-white uppercase tracking-tight mt-1">
                   READY TO GO!
                 </h2>
                 <div className="inline-flex items-center gap-1.5 mt-2">
-                  <h3 className="text-xl sm:text-2xl font-black text-teal-800">{currentExercise.name}</h3>
+                  <h3 className="text-xl sm:text-2xl font-black text-white">{currentExercise.name}</h3>
                   <button
                     type="button"
                     onClick={() => setShowTipsModal(true)}
                     aria-label="View instructions"
-                    className="text-slate-400 hover:text-slate-700 cursor-pointer"
+                    className="text-slate-400 hover:text-white cursor-pointer"
                   >
-                    <Info className="w-5 h-5 text-teal-700" />
+                    <Info className="w-5 h-5 text-[var(--theme-primary)]" />
                   </button>
                 </div>
-                <p className="text-xs text-slate-500 mt-1">{currentExercise.description}</p>
+                <p className="text-xs text-slate-400 mt-1">{currentExercise.description}</p>
               </div>
 
               {/* Circular Countdown Progress Ring */}
@@ -680,7 +680,7 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
                     cy="50"
                     r="42"
                     strokeWidth="8"
-                    className="stroke-slate-100"
+                    className="stroke-slate-800"
                     fill="none"
                   />
                   <circle
@@ -691,13 +691,14 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
                     strokeLinecap="round"
                     strokeDasharray={264}
                     strokeDashoffset={264 - (264 * timeLeft) / 10}
-                    className="stroke-teal-700 transition-all duration-1000 ease-linear"
+                    style={{ stroke: 'var(--theme-primary)' }}
+                    className="transition-all duration-1000 ease-linear"
                     fill="none"
                   />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-5xl sm:text-6xl font-black font-mono text-slate-900">{timeLeft}</span>
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mt-0.5">
+                  <span className="text-5xl sm:text-6xl font-black font-mono text-white">{timeLeft}</span>
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mt-0.5">
                     Seconds
                   </span>
                 </div>
@@ -708,7 +709,7 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
                 <button
                   type="button"
                   onClick={() => beginExercise(currentIndex)}
-                  className="w-full py-4 rounded-xl bg-teal-700 hover:bg-teal-800 text-white font-bold text-sm sm:text-base shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98"
+                  className="cyber-btn-primary w-full py-4 rounded-full font-black text-sm sm:text-base shadow-lg flex items-center justify-center gap-2 cursor-pointer active:scale-95"
                 >
                   <span>Skip Prep &amp; Start</span>
                   <SkipForward className="w-4 h-4" />
@@ -717,7 +718,7 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
                 <button
                   type="button"
                   onClick={() => setPhase('overview')}
-                  className="w-full py-2 text-xs font-semibold text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
+                  className="w-full py-2 text-xs font-semibold text-slate-400 hover:text-white transition-colors cursor-pointer"
                 >
                   Return to Exercise Overview
                 </button>
@@ -734,9 +735,9 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
         <div className="flex-1 overflow-y-auto p-3 sm:p-6 lg:p-8 flex flex-col justify-center">
           <div className="max-w-6xl w-full mx-auto grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 items-stretch">
             {/* Left: Graphic Guide Card (People follow form & instruction here) */}
-            <div className="lg:col-span-7 bg-white border border-slate-200 rounded-2xl sm:rounded-3xl p-3 sm:p-5 shadow-sm flex flex-col justify-between relative min-h-[300px] sm:min-h-[440px] lg:min-h-[520px]">
+            <div className="lg:col-span-7 cyber-card border border-slate-800/80 rounded-3xl p-3 sm:p-5 shadow-2xl flex flex-col justify-between relative min-h-[300px] sm:min-h-[440px] lg:min-h-[520px]">
               <div className="flex items-center justify-between z-10 mb-2">
-                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-slate-900 text-white">
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-black bg-[var(--theme-primary)] text-black">
                   Exercise {currentIndex + 1} of {activeExercises.length}
                 </span>
 
@@ -744,16 +745,16 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
                   <button
                     type="button"
                     onClick={() => setShowTipsModal(true)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer border border-slate-200"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-300 bg-slate-900 hover:bg-slate-850 rounded-full transition-colors cursor-pointer border border-slate-800"
                   >
-                    <Info className="w-3.5 h-3.5 text-teal-700" />
+                    <Info className="w-3.5 h-3.5 text-[var(--theme-primary)]" />
                     <span>Instructions</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setEnlargedImage(currentExercise.image)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer border border-slate-200"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-300 bg-slate-900 hover:bg-slate-850 rounded-full transition-colors cursor-pointer border border-slate-800"
                   >
                     <Maximize2 className="w-3.5 h-3.5" />
                     <span>Enlarge</span>
@@ -777,22 +778,22 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
                 />
               </div>
 
-              <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600">
-                <span className="font-semibold text-slate-800">{currentExercise.focus}</span>
-                <span className="text-teal-700 font-medium">Follow form guidance shown in illustration</span>
+              <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
+                <span className="font-semibold text-slate-300">{currentExercise.focus}</span>
+                <span className="text-[var(--theme-primary)] font-medium">Follow form guidance shown in illustration</span>
               </div>
             </div>
 
             {/* Right: Timer & Playback Controls Card */}
-            <div className="lg:col-span-5 bg-white border border-slate-200 rounded-2xl sm:rounded-3xl p-5 sm:p-8 shadow-sm flex flex-col justify-between text-center min-h-[300px] sm:min-h-[440px] lg:min-h-[520px]">
+            <div className="lg:col-span-5 cyber-card border border-slate-800/80 rounded-3xl p-5 sm:p-8 shadow-2xl flex flex-col justify-between text-center min-h-[300px] sm:min-h-[440px] lg:min-h-[520px]">
               <div>
-                <span className="inline-block px-3 py-1 rounded-full bg-teal-50 text-teal-700 text-xs font-semibold border border-teal-200/60">
+                <span className="inline-block px-3 py-1 rounded-full bg-[var(--theme-primary)]/15 text-[var(--theme-primary)] text-xs font-bold border border-[var(--theme-primary)]/30">
                   {currentExercise.focus}
                 </span>
-                <h3 className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 uppercase tracking-tight mt-2">
+                <h3 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white uppercase tracking-tight mt-2">
                   {currentExercise.name}
                 </h3>
-                <p className="text-xs sm:text-sm text-slate-600 mt-1 max-w-sm mx-auto">
+                <p className="text-xs sm:text-sm text-slate-400 mt-1 max-w-sm mx-auto">
                   {currentExercise.description}
                 </p>
               </div>
@@ -801,17 +802,20 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
               <div className="my-4">
                 <div
                   className={`text-6xl sm:text-7xl lg:text-8xl font-black font-mono tracking-tight transition-colors ${
-                    timeLeft <= 5 ? 'text-amber-600 animate-pulse' : 'text-slate-900'
+                    timeLeft <= 5 ? 'text-amber-400 animate-pulse' : 'text-white'
                   }`}
                 >
                   {formatTime(timeLeft)}
                 </div>
 
                 {/* Progress bar */}
-                <div className="w-full max-w-xs h-3 bg-slate-100 rounded-full mt-4 overflow-hidden mx-auto border border-slate-200">
+                <div className="w-full max-w-xs h-3 bg-slate-800 rounded-full mt-4 overflow-hidden mx-auto border border-slate-700">
                   <div
-                    className="h-full bg-teal-700 transition-all duration-1000 ease-linear rounded-full"
-                    style={{ width: `${(timeLeft / currentExercise.durationSeconds) * 100}%` }}
+                    className="h-full transition-all duration-1000 ease-linear rounded-full"
+                    style={{
+                      width: `${(timeLeft / currentExercise.durationSeconds) * 100}%`,
+                      backgroundColor: 'var(--theme-primary)',
+                    }}
                   />
                 </div>
               </div>
@@ -824,7 +828,7 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
                     onClick={previousExercise}
                     aria-label="Previous exercise"
                     title="Previous Exercise"
-                    className="min-h-[52px] min-w-[52px] rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 flex items-center justify-center transition-all active:scale-95 cursor-pointer"
+                    className="min-h-[52px] min-w-[52px] rounded-2xl bg-slate-900 hover:bg-slate-850 text-slate-300 border border-slate-800 flex items-center justify-center transition-all active:scale-95 cursor-pointer"
                   >
                     <SkipBack className="w-5 h-5" />
                   </button>
@@ -843,16 +847,16 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
                       });
                     }}
                     aria-label={isPaused ? 'Resume exercise timer' : 'Pause exercise timer'}
-                    className="flex-1 min-h-[52px] py-3.5 px-6 rounded-2xl bg-teal-700 hover:bg-teal-800 text-white font-extrabold flex items-center justify-center gap-2 shadow-sm active:scale-98 transition-all cursor-pointer"
+                    className="flex-1 min-h-[52px] py-3.5 px-6 rounded-full cyber-btn-primary font-black flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-all cursor-pointer"
                   >
                     {isPaused ? (
                       <>
-                        <Play className="w-5 h-5 fill-white" />
+                        <Play className="w-5 h-5 fill-current" />
                         <span>Resume</span>
                       </>
                     ) : (
                       <>
-                        <Pause className="w-5 h-5 fill-white" />
+                        <Pause className="w-5 h-5 fill-current" />
                         <span>Pause</span>
                       </>
                     )}
@@ -863,13 +867,13 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
                     onClick={skipActive}
                     aria-label="Skip to next"
                     title="Next Exercise / Skip"
-                    className="min-h-[52px] min-w-[52px] rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 flex items-center justify-center transition-all active:scale-95 cursor-pointer"
+                    className="min-h-[52px] min-w-[52px] rounded-2xl bg-slate-900 hover:bg-slate-850 text-slate-300 border border-slate-800 flex items-center justify-center transition-all active:scale-95 cursor-pointer"
                   >
                     <SkipForward className="w-5 h-5" />
                   </button>
                 </div>
 
-                <div className="flex items-center justify-between text-xs text-slate-500 pt-3 border-t border-slate-100">
+                <div className="flex items-center justify-between text-xs text-slate-400 pt-3 border-t border-slate-800/80">
                   <span>Exercise {currentIndex + 1} of 12</span>
                   <span>{isPaused ? 'Paused' : 'Timer Active'}</span>
                 </div>
@@ -887,16 +891,16 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
           <div className="max-w-5xl w-full mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
             {/* Left: Preview of Upcoming Exercise */}
             {nextExercise && (
-              <div className="lg:col-span-7 bg-white border border-slate-200 rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-sm flex flex-col justify-between relative min-h-[300px] sm:min-h-[420px] lg:min-h-[480px]">
+              <div className="lg:col-span-7 cyber-card border border-slate-800/80 rounded-3xl p-4 sm:p-6 shadow-2xl flex flex-col justify-between relative min-h-[300px] sm:min-h-[420px] lg:min-h-[480px]">
                 <div className="flex items-center justify-between z-10 mb-2">
-                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-teal-50 text-teal-800 border border-teal-200">
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-black bg-[var(--theme-primary)] text-black">
                     NEXT #{currentIndex + 2} OF {activeExercises.length}
                   </span>
 
                   <button
                     type="button"
                     onClick={() => setEnlargedImage(nextExercise.image)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer border border-slate-200"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-300 bg-slate-900 hover:bg-slate-850 rounded-full transition-colors cursor-pointer border border-slate-800"
                   >
                     <Maximize2 className="w-3.5 h-3.5" />
                     <span>Preview Full</span>
@@ -917,25 +921,25 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
                   />
                 </div>
 
-                <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600">
-                  <span className="font-semibold text-slate-900">{nextExercise.name}</span>
+                <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
+                  <span className="font-semibold text-white">{nextExercise.name}</span>
                   <span>{nextExercise.focus}</span>
                 </div>
               </div>
             )}
 
             {/* Right: Rest Timer & Controls Card */}
-            <div className="lg:col-span-5 bg-white border border-slate-200 rounded-2xl sm:rounded-3xl p-6 sm:p-8 shadow-sm flex flex-col justify-between text-center min-h-[300px] sm:min-h-[420px] lg:min-h-[480px]">
+            <div className="lg:col-span-5 cyber-card border border-slate-800/80 rounded-3xl p-6 sm:p-8 shadow-2xl flex flex-col justify-between text-center min-h-[300px] sm:min-h-[420px] lg:min-h-[480px]">
               <div>
-                <span className="text-xs font-extrabold uppercase tracking-widest text-slate-500">
+                <span className="text-xs font-black uppercase tracking-widest text-slate-400">
                   RECOVERY PERIOD
                 </span>
-                <h3 className="text-xl sm:text-2xl font-black text-slate-900 uppercase tracking-tight mt-1">
+                <h3 className="text-xl sm:text-2xl font-black text-white uppercase tracking-tight mt-1">
                   Take a Rest
                 </h3>
-                <p className="text-xs text-slate-500 mt-1">
+                <p className="text-xs text-slate-400 mt-1">
                   Upcoming next:{' '}
-                  <span className="font-bold text-teal-700">
+                  <span className="font-bold text-[var(--theme-primary)]">
                     {nextExercise ? nextExercise.name : 'Final Stretch'}
                   </span>
                 </p>
@@ -943,7 +947,10 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
 
               {/* Big Rest Timer */}
               <div className="my-6">
-                <div className="text-6xl sm:text-7xl lg:text-8xl font-black font-mono tracking-tight text-teal-700">
+                <div
+                  className="text-6xl sm:text-7xl lg:text-8xl font-black font-mono tracking-tight"
+                  style={{ color: 'var(--theme-primary)' }}
+                >
                   {formatTime(timeLeft)}
                 </div>
                 <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block mt-2">
@@ -957,7 +964,7 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
                   <button
                     type="button"
                     onClick={extendRest}
-                    className="py-3.5 px-4 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 font-bold text-sm flex items-center justify-center gap-1.5 transition-all active:scale-95 cursor-pointer"
+                    className="py-3.5 px-4 rounded-full bg-slate-900 hover:bg-slate-850 text-amber-400 border border-slate-800 font-bold text-sm flex items-center justify-center gap-1.5 transition-all active:scale-95 cursor-pointer"
                   >
                     <Plus className="w-4 h-4" />
                     <span>+10s Rest</span>
@@ -966,14 +973,14 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
                   <button
                     type="button"
                     onClick={skipRest}
-                    className="py-3.5 px-4 rounded-xl bg-teal-700 hover:bg-teal-800 text-white font-bold text-sm shadow-sm flex items-center justify-center gap-1.5 transition-all active:scale-95 cursor-pointer"
+                    className="py-3.5 px-4 rounded-full cyber-btn-primary font-black text-sm shadow-lg flex items-center justify-center gap-1.5 transition-all active:scale-95 cursor-pointer"
                   >
                     <span>Skip Rest</span>
                     <SkipForward className="w-4 h-4" />
                   </button>
                 </div>
 
-                <p className="text-xs text-slate-500 pt-2 border-t border-slate-100">
+                <p className="text-xs text-slate-400 pt-2 border-t border-slate-800/80">
                   Catch your breath and get ready for {nextExercise?.name || 'the next exercise'}
                 </p>
               </div>
@@ -987,30 +994,30 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
       {/* ========================================================================= */}
       {phase === 'completed' && (
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 flex flex-col justify-center items-center">
-          <div className="max-w-xl w-full bg-white border border-slate-200 rounded-2xl sm:rounded-3xl p-6 sm:p-10 shadow-sm text-center space-y-6">
-            <div className="w-20 h-20 rounded-2xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center mx-auto shadow-sm">
+          <div className="max-w-xl w-full cyber-card border border-slate-800/80 rounded-3xl p-6 sm:p-10 shadow-2xl text-center space-y-6">
+            <div className="w-20 h-20 rounded-3xl bg-amber-500/10 text-amber-400 border border-amber-500/30 flex items-center justify-center mx-auto shadow-sm">
               <Trophy className="w-10 h-10" />
             </div>
 
             <div>
-              <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+              <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
                 Workout Completed!
               </h2>
-              <p className="text-slate-600 text-sm sm:text-base mt-2 max-w-md mx-auto">
+              <p className="text-slate-400 text-sm sm:text-base mt-2 max-w-md mx-auto">
                 Incredible dedication! You crushed all 12 exercises, maintained your discipline streak, and pushed your limits.
               </p>
             </div>
 
             {/* Stats Card */}
             <div className="grid grid-cols-2 gap-3 max-w-sm mx-auto">
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-center">
-                <span className="text-xs text-slate-500 font-medium">Exercises</span>
-                <div className="text-xl sm:text-2xl font-black text-slate-900 mt-0.5">12 / 12</div>
+              <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 text-center">
+                <span className="text-xs text-slate-400 font-medium">Exercises</span>
+                <div className="text-xl sm:text-2xl font-black text-white mt-0.5">12 / 12</div>
               </div>
 
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-center">
-                <span className="text-xs text-slate-500 font-medium">Total Duration</span>
-                <div className="text-xl sm:text-2xl font-black text-teal-700 mt-0.5">
+              <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 text-center">
+                <span className="text-xs text-slate-400 font-medium">Total Duration</span>
+                <div className="text-xl sm:text-2xl font-black text-[var(--theme-primary)] mt-0.5">
                   {formatTime(totalSecondsElapsed)}
                 </div>
               </div>
@@ -1020,7 +1027,7 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
               <button
                 type="button"
                 onClick={startWorkout}
-                className="w-full py-4 rounded-xl bg-teal-700 hover:bg-teal-800 text-white font-bold text-base flex items-center justify-center gap-2 shadow-sm transition-all active:scale-98 cursor-pointer"
+                className="w-full py-4 rounded-full cyber-btn-primary font-black text-base flex items-center justify-center gap-2 shadow-lg transition-all active:scale-95 cursor-pointer"
               >
                 <RotateCcw className="w-5 h-5" />
                 <span>Do It Again</span>
@@ -1029,7 +1036,7 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
               <button
                 type="button"
                 onClick={handleClose}
-                className="w-full py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-sm border border-slate-200 transition-colors cursor-pointer"
+                className="w-full py-3 rounded-full bg-slate-900 hover:bg-slate-850 text-slate-300 font-bold text-sm border border-slate-800 transition-colors cursor-pointer"
               >
                 Return to Dashboard
               </button>
@@ -1042,19 +1049,19 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
       {/* EXERCISE TIPS & INSTRUCTIONS MODAL                                       */}
       {/* ========================================================================= */}
       {showTipsModal && (
-        <div className="fixed inset-0 z-60 bg-slate-900/60 backdrop-blur-sm p-4 flex items-center justify-center">
-          <div className="w-full max-w-md bg-white border border-slate-200 rounded-2xl sm:rounded-3xl p-5 sm:p-6 text-slate-900 shadow-xl flex flex-col max-h-[85vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+        <div className="fixed inset-0 z-60 bg-black/80 backdrop-blur-md p-4 flex items-center justify-center">
+          <div className="w-full max-w-md cyber-card border border-slate-800 rounded-3xl p-5 sm:p-6 text-white shadow-2xl flex flex-col max-h-[85vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
               <div className="flex items-center gap-2">
-                <div className="p-1.5 rounded-lg bg-teal-50 text-teal-700">
+                <div className="p-1.5 rounded-lg bg-[var(--theme-primary)]/15 text-[var(--theme-primary)]">
                   <Info className="w-4 h-4" />
                 </div>
-                <h4 className="font-bold text-base text-slate-900">{currentExercise.name} Form Guide</h4>
+                <h4 className="font-black text-base text-white">{currentExercise.name} Form Guide</h4>
               </div>
               <button
                 type="button"
                 onClick={() => setShowTipsModal(false)}
-                className="text-slate-400 hover:text-slate-700 cursor-pointer"
+                className="text-slate-400 hover:text-white cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1062,21 +1069,21 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
 
             <div className="py-4 space-y-4 text-sm">
               <div>
-                <h5 className="text-xs font-bold uppercase text-slate-500">Target Area</h5>
-                <p className="text-teal-700 font-semibold mt-0.5">{currentExercise.focus}</p>
+                <h5 className="text-xs font-bold uppercase text-slate-400">Target Area</h5>
+                <p className="text-[var(--theme-primary)] font-semibold mt-0.5">{currentExercise.focus}</p>
               </div>
 
               <div>
-                <h5 className="text-xs font-bold uppercase text-slate-500">How to Perform</h5>
-                <p className="text-slate-600 mt-1 leading-relaxed">{currentExercise.description}</p>
+                <h5 className="text-xs font-bold uppercase text-slate-400">How to Perform</h5>
+                <p className="text-slate-300 mt-1 leading-relaxed">{currentExercise.description}</p>
               </div>
 
               <div>
-                <h5 className="text-xs font-bold uppercase text-slate-500">Key Form Tips</h5>
+                <h5 className="text-xs font-bold uppercase text-slate-400">Key Form Tips</h5>
                 <ul className="mt-2 space-y-2">
                   {currentExercise.tips.map((tip, idx) => (
-                    <li key={idx} className="flex items-start gap-2 text-xs text-slate-700">
-                      <CheckCircle2 className="w-4 h-4 text-teal-600 shrink-0 mt-0.5" />
+                    <li key={idx} className="flex items-start gap-2 text-xs text-slate-300">
+                      <CheckCircle2 className="w-4 h-4 text-[var(--theme-primary)] shrink-0 mt-0.5" />
                       <span>{tip}</span>
                     </li>
                   ))}
@@ -1087,7 +1094,7 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
             <button
               type="button"
               onClick={() => setShowTipsModal(false)}
-              className="w-full py-3 rounded-xl bg-teal-700 hover:bg-teal-800 font-bold text-sm text-white transition-colors cursor-pointer mt-2"
+              className="w-full py-3 rounded-full cyber-btn-primary font-black text-sm shadow-md transition-colors cursor-pointer mt-2"
             >
               Close Guide
             </button>
@@ -1100,19 +1107,19 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
       {/* ========================================================================= */}
       {enlargedImage && (
         <div
-          className="fixed inset-0 z-60 bg-slate-900/80 backdrop-blur-md p-4 sm:p-8 flex items-center justify-center cursor-zoom-out"
+          className="fixed inset-0 z-60 bg-black/85 backdrop-blur-md p-4 sm:p-8 flex items-center justify-center cursor-zoom-out"
           onClick={() => setEnlargedImage(null)}
         >
           <div
-            className="relative w-full max-w-3xl max-h-[90vh] h-[90vh] bg-white rounded-2xl sm:rounded-3xl p-4 shadow-2xl flex flex-col overflow-hidden"
+            className="relative w-full max-w-3xl max-h-[90vh] h-[90vh] cyber-card border border-slate-800 rounded-2xl sm:rounded-3xl p-4 shadow-2xl flex flex-col overflow-hidden text-white"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between pb-3 border-b border-slate-200">
-              <span className="text-sm font-bold text-slate-900">High-Resolution Exercise Diagram</span>
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <span className="text-sm font-black text-white">High-Resolution Exercise Diagram</span>
               <button
                 type="button"
                 onClick={() => setEnlargedImage(null)}
-                className="min-h-[36px] min-w-[36px] inline-flex items-center justify-center rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors cursor-pointer"
+                className="min-h-[36px] min-w-[36px] inline-flex items-center justify-center rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>

@@ -451,6 +451,52 @@ button:active {
 }
 
 /* ==========================================================================
+   Cyber-Athletic UI Component Styles (Reference UI 2026)
+   ========================================================================== */
+.cyber-card {
+  background: var(--theme-surface);
+  border: 1px solid var(--theme-border);
+  border-radius: 1.5rem;
+  box-shadow: 0 0 25px -5px var(--theme-glow), 0 10px 30px -5px rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  transition: border-color var(--duration-normal) var(--ease-out),
+              box-shadow var(--duration-normal) var(--ease-out);
+}
+
+.cyber-nav-dock {
+  background: rgba(8, 14, 26, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 10px 40px -5px rgba(0, 0, 0, 0.85), 0 0 20px -3px var(--theme-glow);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.cyber-pill-active {
+  border: 1.5px solid var(--theme-primary) !important;
+  background-color: var(--theme-badge-bg) !important;
+  color: var(--theme-primary) !important;
+  box-shadow: 0 0 16px var(--theme-glow) !important;
+}
+
+.cyber-btn-primary {
+  background-color: var(--theme-primary) !important;
+  color: var(--theme-primary-text) !important;
+  font-weight: 800 !important;
+  box-shadow: 0 0 20px var(--theme-glow) !important;
+  transition: transform var(--duration-fast) var(--ease-out),
+              box-shadow var(--duration-fast) var(--ease-out),
+              filter var(--duration-fast) var(--ease-out) !important;
+}
+.cyber-btn-primary:hover {
+  filter: brightness(1.12);
+  box-shadow: 0 0 28px var(--theme-glow) !important;
+}
+.cyber-btn-primary:active {
+  transform: scale(0.97) !important;
+}
+
+/* ==========================================================================
    Custom Micro-Animation Keyframes
    ========================================================================== */
 @keyframes fadeIn {
