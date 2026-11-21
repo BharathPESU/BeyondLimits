@@ -389,7 +389,7 @@ export default function WorkoutModal({ isOpen, onClose }: WorkoutModalProps) {
 
   return (
     <div
-      className="fixed inset-0 z-50 w-full h-full bg-slate-50 text-slate-900 flex flex-col overflow-hidden"
+      className="fixed inset-0 z-50 w-full h-full bg-slate-50 text-slate-900 flex flex-col overflow-hidden modal-sheet-in"
       role="dialog"
       aria-modal="true"
       aria-labelledby="workout-feature-title"

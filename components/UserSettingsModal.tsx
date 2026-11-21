@@ -414,12 +414,12 @@ export default function UserSettingsModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-3 sm:p-6 bg-slate-900/60 backdrop-blur-sm overflow-y-auto pt-[max(env(safe-area-inset-top),20px)] pb-12"
+      className="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-3 sm:p-6 bg-slate-900/60 backdrop-blur-sm overflow-y-auto pt-[max(env(safe-area-inset-top),20px)] pb-12 modal-backdrop-in"
       role="dialog"
       aria-modal="true"
     >
       <div
-        className="w-full max-w-lg bg-white border border-slate-200 rounded-3xl p-5 sm:p-7 shadow-2xl space-y-6 my-auto sm:my-8 text-slate-900"
+        className="w-full max-w-lg bg-white border border-slate-200 rounded-3xl p-5 sm:p-7 shadow-2xl space-y-6 my-auto sm:my-8 text-slate-900 modal-dialog-in"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header with Left Back Arrow */}

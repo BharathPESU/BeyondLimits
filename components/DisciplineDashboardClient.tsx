@@ -1306,19 +1306,6 @@ export default function DisciplineDashboardClient({
               >
                 Weekly Trend (Month)
               </button>
-
-              {/* Proactive Mood & Energy Check-in Button */}
-              {isAgentMode && (
-                <button
-                  type="button"
-                  onClick={handleProactiveMoodCheckIn}
-                  className="min-h-[40px] inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl bg-teal-500/20 text-teal-300 hover:bg-teal-500/30 border border-teal-500/40 transition-all cursor-pointer shadow-sm"
-                  title="Jarvis asks how you are feeling and logs your mental state to local database"
-                >
-                  <HeartHandshake className="w-3.5 h-3.5 text-teal-400" />
-                  <span>Check-In Mood</span>
-                </button>
-              )}
             </div>
           </div>
 
@@ -1577,7 +1564,7 @@ export default function DisciplineDashboardClient({
             onClick={() => setIsMotivationHubOpen(true)}
             className="min-h-[46px] rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-900 font-semibold text-[11px] flex flex-col items-center justify-center gap-0.5 transition-colors cursor-pointer"
           >
-            <Sparkles className="w-4 h-4 text-amber-600" />
+            <Sparkles className="w-4 h-4 text-teal-700" />
             <span>Motivation</span>
           </button>
 

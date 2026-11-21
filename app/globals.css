@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
 /* ==========================================================================
    Mobile Fullscreen & Standalone PWA Optimizations
@@ -77,7 +78,10 @@ svg[aria-label="Clerk logo"],
   color: #0f172a !important;
   font-weight: 600 !important;
   border-radius: 0.75rem !important;
-  transition: all 0.2s ease !important;
+  transition: background-color var(--duration-normal) var(--ease-out),
+              border-color var(--duration-normal) var(--ease-out),
+              color var(--duration-normal) var(--ease-out),
+              box-shadow var(--duration-normal) var(--ease-out) !important;
 }
 
 .cl-socialButtonsBlockButton:hover {
@@ -119,6 +123,18 @@ svg[aria-label="Clerk logo"],
 .cl-footerActionLink:hover {
   color: #047857 !important;
   text-decoration: underline !important;
+}
+
+/* ==========================================================================
+   Motion Tokens (Emil Kowalski Animation Philosophy)
+   ========================================================================== */
+:root {
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+  --duration-fast: 160ms;
+  --duration-normal: 250ms;
+  --duration-modal: 300ms;
 }
 
 /* ==========================================================================
@@ -372,16 +388,19 @@ html[data-theme] select:focus {
 
 /* 3. Smooth Transitions: 200-300ms */
 .theme-transition {
-  transition: all 250ms cubic-bezier(0.4, 0, 0.2, 1);
+  transition: background-color var(--duration-normal) var(--ease-in-out),
+              border-color var(--duration-normal) var(--ease-in-out),
+              color var(--duration-normal) var(--ease-in-out),
+              box-shadow var(--duration-normal) var(--ease-in-out);
 }
 
 /* Micro-interactions & Smooth Transitions across interactive controls */
-button, a, input, select, textarea, div[role="dialog"], .rounded-2xl, .rounded-xl {
-  transition: background-color 250ms cubic-bezier(0.4, 0, 0.2, 1),
-              border-color 250ms cubic-bezier(0.4, 0, 0.2, 1),
-              color 250ms cubic-bezier(0.4, 0, 0.2, 1),
-              box-shadow 250ms cubic-bezier(0.4, 0, 0.2, 1),
-              transform 200ms ease;
+button, a, input, select, textarea {
+  transition: background-color var(--duration-normal) var(--ease-out),
+              border-color var(--duration-normal) var(--ease-out),
+              color var(--duration-normal) var(--ease-out),
+              box-shadow var(--duration-normal) var(--ease-out),
+              transform var(--duration-fast) var(--ease-out);
 }
 
 /* 4. Micro-animations & Interactive States */
@@ -397,6 +416,7 @@ button, a, input, select, textarea, div[role="dialog"], .rounded-2xl, .rounded-x
 
 button:active {
   transform: scale(0.97);
+  transition: transform var(--duration-fast) var(--ease-out);
 }
 
 /* Theme Surface Cards */
@@ -405,7 +425,10 @@ button:active {
   border: 1px solid var(--theme-border);
   color: var(--theme-text);
   box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.4);
-  transition: all 250ms cubic-bezier(0.4, 0, 0.2, 1);
+  transition: background-color var(--duration-normal) var(--ease-in-out),
+              border-color var(--duration-normal) var(--ease-in-out),
+              color var(--duration-normal) var(--ease-in-out),
+              box-shadow var(--duration-normal) var(--ease-in-out);
 }
 
 /* Theme Primary Action Buttons */
@@ -414,7 +437,10 @@ button:active {
   color: var(--theme-primary-text);
   font-weight: 800;
   box-shadow: 0 4px 14px var(--theme-glow);
-  transition: all 200ms ease;
+  transition: background-color var(--duration-fast) var(--ease-out),
+              box-shadow var(--duration-fast) var(--ease-out),
+              filter var(--duration-fast) var(--ease-out),
+              transform var(--duration-fast) var(--ease-out);
 }
 .theme-btn-primary:hover {
   filter: brightness(1.1);
@@ -422,4 +448,119 @@ button:active {
 }
 .theme-btn-primary:active {
   transform: scale(0.98);
+}
+
+/* ==========================================================================
+   Custom Micro-Animation Keyframes
+   ========================================================================== */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  20%, 60% {
+    transform: translateX(-4px);
+  }
+  40%, 80% {
+    transform: translateX(4px);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 220ms var(--ease-out) forwards;
+}
+
+.animate-shake {
+  animation: shake 300ms ease-in-out;
+}
+
+/* ==========================================================================
+   Modal & Overlay Entrance Animations (Emil Kowalski Physics)
+   ========================================================================== */
+@keyframes modalBackdropFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes modalContentScaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes modalSheetSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.modal-backdrop-in {
+  animation: modalBackdropFadeIn var(--duration-modal) var(--ease-out) forwards;
+}
+
+.modal-dialog-in {
+  animation: modalContentScaleIn var(--duration-modal) var(--ease-out) forwards;
+  transform-origin: center;
+}
+
+.modal-sheet-in {
+  animation: modalSheetSlideIn var(--duration-modal) var(--ease-out) forwards;
+}
+
+/* ==========================================================================
+   Accessibility: prefers-reduced-motion & touch-gated hover
+   ========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* Preserve essential opacity transitions for comprehension */
+  .fade-in,
+  [data-state="open"],
+  [data-state="closed"] {
+    transition-property: opacity !important;
+    transition-duration: 150ms !important;
+  }
+
+  /* Disable persistent pulsing and pinging animations */
+  .animate-pulse,
+  .animate-ping,
+  .animate-spin,
+  .animate-bounce {
+    animation: none !important;
+  }
+}
+
+/* Touch screen hover protection: avoid sticky hovers on mobile */
+@media (hover: none) and (pointer: coarse) {
+  .theme-interactive:hover,
+  .theme-btn-primary:hover {
+    transform: none !important;
+  }
 }
